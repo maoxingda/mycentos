@@ -9,7 +9,7 @@ from util import logcall
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-f', '--file', required=True
+    parser.add_argument('-f', '--file', default='/usr/local/bin/xsync'
                         , help='the file name will be created')
     parser.add_argument('-w', '--hosts', required=True
                         , help='the host list where the file will be sync to'
