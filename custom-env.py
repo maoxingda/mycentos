@@ -3,7 +3,7 @@
 import argparse
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-f', '--file', default='/etc/profile.d/custom.sh'
                         , help='the file name will be created')

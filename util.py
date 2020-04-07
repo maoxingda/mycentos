@@ -35,7 +35,7 @@ def putenv(interactive: bool, profile_path: str, env_name: str, abspath: str, *r
     if re.match(r'^\d', env_name):
         raise ValueError('the evironment variable name can not start with digit：' + env_name)
 
-    select_lines = []
+    select_lines: list[str] = []
     if os.path.exists(profile_path):
         with open(profile_path, 'r') as conf:
             initial_lines = conf.readlines()
@@ -51,17 +51,29 @@ def putenv(interactive: bool, profile_path: str, env_name: str, abspath: str, *r
                             logging.info(f'give up setting evironment variable {env_name}')
                             sys.exit()
 
-                if not what:
-                    select_lines.append(initial_lines[lineno])
+                if what or initial_lines[lineno].find(f'export {env_name}=') != -1 \
+                        or initial_lines[lineno].find(f'${env_name}') != -1:
+                    continue
+                select_lines.append(initial_lines[lineno])
 
+    if len(select_lines) != 0 and select_lines[-1] != '\n':
+        select_lines.append('\n')
+        select_lines.append('\n')
     select_lines.append(f'# {env_name}\n')
     select_lines.append(f'export {env_name}={abspath}\n')
     select_lines.append(f'export PATH=$PATH:${env_name}/bin\n')
     for path in relpaths:
         select_lines.append(f'export PATH=$PATH:${env_name}/{path}\n')
 
+    remove_continuous_empty_lines: list[str] = list()
+    for i, line in enumerate(select_lines):
+        if line == '\n' and len(remove_continuous_empty_lines) != 0\
+                and remove_continuous_empty_lines[-1] == '\n':
+            continue
+        remove_continuous_empty_lines.append(line)
+
     with open(profile_path, 'w') as conf:
-        conf.writelines(select_lines)
+        conf.writelines(remove_continuous_empty_lines)
 
 
 import time

@@ -7,13 +7,13 @@ import sys
 from util import logcall
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-f', '--file', default='/usr/local/bin/xsync'
                         , help='the file name will be created')
     parser.add_argument('-w', '--hosts', required=True
                         , help='the host list where the file will be sync to'
-                               ', hostname[start-end] or support hostname1,hostname2,...')
+                               ', hostname[start-end] or hostname1,hostname2,...')
 
     args = parser.parse_args()
 
