@@ -15,8 +15,8 @@ git pull
 files=(custom-env.sh custom-functions.sh)
 
 for file in "${files[@]}"; do
-  sudo rm -f "$file"
-  sudo cp /etc/profile.d/"$file" "$file"
+#  sudo rm -v -f "$file"
+  sudo cp -v /etc/profile.d/"$file" "$file"
 
   git add "$file"
 
