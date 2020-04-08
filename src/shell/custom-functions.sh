@@ -1,6 +1,6 @@
 color=41
 
-function arg_test() {
+function funcargs() {
     for arg in "$@"; do
       echo arg
     done
