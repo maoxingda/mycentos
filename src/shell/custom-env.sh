@@ -15,3 +15,7 @@ export PATH=$PATH:$HADOOP_HOME/sbin
 # KAFKA_HOME
 export KAFKA_HOME=/opt/module/kafka_2.11-0.11.0.0
 export PATH=$PATH:$KAFKA_HOME/bin
+
+# FLUME_HOME
+#export FLUME_HOME=/opt/module/apache-flume-1.9.0
+#export PATH=$PATH:$FLUME_HOME/bin
