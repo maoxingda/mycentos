@@ -1,5 +1,11 @@
 color=41
 
+function arg_test() {
+    for arg in "$@"; do
+      echo arg
+    done
+}
+
 function xecho()
 {
     if [[ $# != 1 ]] ; then
