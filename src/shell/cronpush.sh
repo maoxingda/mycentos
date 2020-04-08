@@ -7,6 +7,11 @@
 # | | | | |
 # * * * * * user-name command to be executed
 
+if [ ! -d "/home/maoxd/github" ]; then
+    mkdir "/home/maoxd/github"
+    git clone git@github.com:maoxingda/mycentos.git
+fi
+
 cd /home/maoxd/github/mycentos/src/shell || exit
 
 git rebase
