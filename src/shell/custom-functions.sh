@@ -8,13 +8,11 @@ function funcargs() {
 
 function xecho()
 {
-    if [[ $# != 1 ]] ; then
-        echo -e "\e[${color}musage:\e[0m"
-        echo -e "\e[${color}m    xecho message\e[0m"
-        echo && return $?
-    fi
+    for arg in "$@"; do
+        echo -ne "\e[${color}$arg \e[0m"
+    done
 
-    echo -ne "\e[${color}m$1\e[0m"
+    echo
 }
 
 function xecholn()
