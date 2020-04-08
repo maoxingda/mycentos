@@ -1,6 +1,3 @@
-# the color of the usage text
-
-
 color=41
 
 function xecho()
