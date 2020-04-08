@@ -1,8 +1,4 @@
 #! /bin/bash
- 
-# For details see man 4 crontabs
- 
-# Example of job definition:
 # .-------- minute (0 - 59)
 # | .------ hour (0 - 23)
 # | | .---- day of month (1 - 31)
@@ -11,17 +7,19 @@
 # | | | | |
 # * * * * * user-name command to be executed
 
+cd /home/maoxd/github/mycentos/src/shell || exit
 
-cd /home/maoxd/github/mycentos/src
+git rebase
+git pull
 
-git rebase; git pull
+files=(custom-env.sh custom-functions.sh)
 
-file=custom$(date +%Y%m%d%H%M%S).sh
+for file in "${files[@]}"; do
+  sudo cp /etc/profile.d/"$file" "$file"
 
-sudo cp /etc/profile.d/custom.sh $file
+  git add "$file"
 
-git add $file
-
-git commit -m 'cron push'
+  git commit -m 'cron push...'
+done
 
 git push

@@ -83,7 +83,7 @@ if __name__ == '__main__':
     with open(f'{kafka_home}/config/server.properties', 'w') as file:
         file.writelines(lines)
 
-    putenv(interactive, '/etc/profile.d/custom.sh', 'KAFKA_HOME', kafka_home)
+    putenv(interactive, '/etc/profile.d/custom-env.sh', 'KAFKA_HOME', kafka_home)
 
     if interactive:
         logging.info('the software needs to reboot after installation (y/n)')
