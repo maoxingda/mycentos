@@ -5,7 +5,7 @@ import shutil
 import socket
 import tarfile
 
-from util import *
+from src.util import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -92,4 +92,4 @@ if __name__ == '__main__':
             sys.exit()
 
     logging.info(f'{kafka_home} has been successfully installed')
-    # logcall('sync && sudo reboot')
+    logcall('sync && sudo reboot')

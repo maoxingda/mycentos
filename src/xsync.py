@@ -4,7 +4,7 @@ import argparse
 import re
 import sys
 
-from util import logcall
+from src.util import logcall
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)

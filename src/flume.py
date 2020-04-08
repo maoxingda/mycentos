@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 import argparse
 import getpass
-import os
 import shutil
 import tarfile
 
-from util import *
+from src.util import *
 
 if __name__ == '__main__':
     # parse = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
