@@ -1,11 +1,8 @@
 color=41
 
 function funcargs() {
-    echo $#
-    echo $*
-    echo $@
     for arg in "$@"; do
-        echo arg
+        echo "$arg"
     done
 }
 
