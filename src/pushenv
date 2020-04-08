@@ -1,0 +1,15 @@
+#! /bin/bash
+
+cd /home/maoxd/github/mycentos/src
+
+/usr/bin/git rebase
+
+/usr/bin/git pull
+
+sudo cp /etc/profile.d/custom.sh .
+
+/usr/bin/git add custom.sh
+
+/usr/bin/git commit -m 'cron push'
+
+/usr/bin/git push
