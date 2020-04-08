@@ -1,19 +1,10 @@
 color=41
 
-function funcargs() {
-    for arg in "$@"; do
-        echo "$arg"
-    done
-}
-
 function xecho()
 {
     for arg in "$@"; do
-        echo -n -e "$arg "
-        echo -n -e "\e[${color}m${arg} \e[0m"
-#        echo -e "\e[${color}m${arg} \e[0m"
+        echo -ne "\e[${color}m${arg} \e[0m"
     done
-
     echo
 }
 
