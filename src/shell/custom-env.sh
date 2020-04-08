@@ -19,3 +19,6 @@ export PATH=$PATH:$KAFKA_HOME/bin
 # FLUME_HOME
 #export FLUME_HOME=/opt/module/apache-flume-1.9.0
 #export PATH=$PATH:$FLUME_HOME/bin
+# FLUME_HOME
+#export FLUME_HOME=/opt/module/apache-flume-1.9.0
+#export PATH=$PATH:$FLUME_HOME/bin
