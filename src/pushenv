@@ -16,9 +16,11 @@ cd /home/maoxd/github/mycentos/src
 
 git rebase; git pull
 
-sudo cp /etc/profile.d/custom.sh custom$(date +%Y%m%d%H%M%S).sh
+file=custom$(date +%Y%m%d%H%M%S).sh
 
-git add custom.sh
+sudo cp /etc/profile.d/custom.sh $file
+
+git add $file
 
 git commit -m 'cron push'
 
