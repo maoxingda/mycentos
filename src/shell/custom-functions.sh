@@ -9,6 +9,7 @@ function funcargs() {
 function xecho()
 {
     for arg in "$@"; do
+        echo "$arg"
         echo -ne "\e[${color}${arg} \e[0m"
     done
 
