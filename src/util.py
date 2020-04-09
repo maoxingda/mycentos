@@ -18,7 +18,7 @@ def logcall(args):
     call(args, shell=True)
 
 
-def yesorno():
+def readchar():
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
@@ -47,7 +47,7 @@ def putenv(interactive: bool, profile_path: str, env_name: str, abspath: str, *r
                     if interactive:
                         logging.info(f'[{env_name}={os.environ[env_name]}] already existed'
                                      ', reset or stay the same (y/n)')
-                        if 'y' != yesorno():
+                        if 'y' != readchar():
                             logging.info(f'give up setting evironment variable {env_name}')
                             sys.exit()
 
@@ -67,39 +67,10 @@ def putenv(interactive: bool, profile_path: str, env_name: str, abspath: str, *r
 
     remove_continuous_empty_lines: list[str] = list()
     for i, line in enumerate(select_lines):
-        if line == '\n' and len(remove_continuous_empty_lines) != 0\
+        if line == '\n' and len(remove_continuous_empty_lines) != 0 \
                 and remove_continuous_empty_lines[-1] == '\n':
             continue
         remove_continuous_empty_lines.append(line)
 
     with open(profile_path, 'w') as conf:
         conf.writelines(remove_continuous_empty_lines)
-
-
-import time
-
-
-def progress_bar(num):
-    j = "#";
-    k = "=";
-    t = "|/-\\";  # s = " " * (num + 1)
-
-    for i in range(0, num + 1):
-        j += "#";
-        k += "=";
-        s = ("=" * i) + (" " * (num - i))
-
-        # print(int(i/num*100), end='%\r')
-        # print('%.2f' % (i/num*100), end='%\r')
-        # print('%.2f' % (i*100/num), end='%\r')
-        # print('complete percent:', time.strftime("%Y-%m-%d %H:%M:%S", \
-        #        time.localtime()), int((i/num)*100), end='%\r')
-        # print(str(int(i/num*100)) + '% ' + j + '->', end='\r')
-        # print(k + ">" + str(int(i/num*100)), end='%\r')
-        # print("[%s]" % t[i%4], end='\r')
-        # print("[%s][%s][%.2f" % (t[i%4], k, (i/num*100)), "%]", end='\r')
-        print("[%s][%s][%.2f" % (t[i % 4], s, (i / num * 100)), "%]", end='\r')
-
-        time.sleep(0.1)
-
-    print()

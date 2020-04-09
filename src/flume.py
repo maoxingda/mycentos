@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     if os.path.exists(flume_home) and interactive:
         logging.info(f'{flume_home} already existed, continue or exit (y/n)')
-        if 'y' != yesorno():
+        if 'y' != readchar():
             logging.info('exit install...')
             sys.exit()
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     if interactive:
         logging.info('the software needs to reboot after installation (y/n)')
-        if 'y' != yesorno():
+        if 'y' != readchar():
             logging.warning('please reboot manually to make the installatin take effect')
             sys.exit()
 
