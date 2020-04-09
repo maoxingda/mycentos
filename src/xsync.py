@@ -1,10 +1,10 @@
-#! /usr/bin/python3
+#! /usr/local/bin/python3
 # -*- coding: utf-8 -*-
 import argparse
 import re
 import sys
 
-from src.util import logcall
+from util import logcall
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)

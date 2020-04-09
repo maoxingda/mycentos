@@ -1,15 +1,12 @@
-﻿#! /bin/python3
+#! /usr/local/bin/python3
 # -*- coding: utf-8 -*-
 import getpass
 import os
-import re
 import shutil
 import socket
 import sys
-import termios
-import tty
-# from configparser import ConfigParser
-from subprocess import call
+
+from util import *
 
 if __name__ == '__main__':
     # 前提条件
@@ -18,7 +15,7 @@ if __name__ == '__main__':
               .format(sys.argv[0].split("/")[-1]))
         sys.exit()
 
-    if os.environ['HADOOP_HOME'] == '':
+    if not os.getenv('HADOOP_HOME'):
         raise ValueError('请先安装hadoop集群，并设置HADOOP_HOME环境变量')
 
     inst_root_path = sys.argv[2]
@@ -26,12 +23,13 @@ if __name__ == '__main__':
 
     if not os.path.exists(inst_root_path):
         os.makedirs(inst_root_path)
-        print('make dir: ' + inst_root_path)
+        logging.info('make dir: ' + inst_root_path)
 
     # 是否指定非交互式安装
+    interactive = True
     if len(sys.argv) > 3 and sys.argv[3] == '--non-interactive':
-        non_interactive = True
-        print('非交互式安装')
+        interactive = False
+        logging.info('非交互式安装')
 
     # 读取mysql用户名和密码
     # config = ConfigParser()
@@ -42,9 +40,9 @@ if __name__ == '__main__':
     password = '00maoxdMAOXD$$'
 
     if user != '' and password != '':
-        print('the database user: {}, password: {}'.format(user, password))
+        logging.info('the database user: {}, password: {}'.format(user, password))
     else:
-        print('no find database user and passwrod configuration, quit installation.')
+        logging.info('no find database user and passwrod configuration, quit installation.')
         sys.exit()
 
     # 检测指定目录是否已经安装过hive，
@@ -52,30 +50,30 @@ if __name__ == '__main__':
     pkg_hive = 'apache-hive-3.1.2'
     hive_install_path = inst_root_path + '/' + pkg_hive
     if os.path.exists(hive_install_path):
-        if not non_interactive:
-            print(hive_install_path + '已存在，您是想覆盖安装还是退出安装（y/n）：')
-            comfirm = yesorno()
+        if interactive:
+            logging.info(hive_install_path + '已存在，您是想覆盖安装还是退出安装（y/n）：')
+            comfirm = readchar()
             if 'y' == comfirm:
-                print('继续安装...')
+                logging.info('继续安装...')
                 shutil.rmtree(hive_install_path)
-                print('delete dir: ' + hive_install_path)
+                logging.info('delete dir: ' + hive_install_path)
             else:
-                print('退出安装...')
+                logging.info('退出安装...')
                 sys.exit()
         else:
             shutil.rmtree(hive_install_path)
-            print('delete dir: ' + hive_install_path)
+            logging.info('delete dir: ' + hive_install_path)
 
     logcall('tar xf {}/{}-bin.tar.gz -C {}'.format(software_root_path, pkg_hive, inst_root_path))
     os.rename('{0}/{1}-bin'.format(inst_root_path, pkg_hive), '{0}/{1}'.format(inst_root_path, pkg_hive))
-    print('rename {0}/{1}-bin to '.format(inst_root_path, pkg_hive)
+    logging.info('rename {0}/{1}-bin to '.format(inst_root_path, pkg_hive)
           + '{0}/{1}'.format(inst_root_path, pkg_hive))
 
     # 设置环境变量HIVE_HOME
-    putenv('/home/{}/.bash_profile'.format(getpass.getuser()),
+    putenv(interactive, '/etc/profile.d/xenv.sh'.format(getpass.getuser()),
            'HIVE_HOME', '{}/{}'.format(inst_root_path, pkg_hive))
     os.environ['HIVE_HOME'] = '{}/{}'.format(inst_root_path, pkg_hive)
-    print('set evironment variable: HIVE_HOME={}'.format('{}/{}'.format(inst_root_path, pkg_hive)))
+    logging.info('set evironment variable: HIVE_HOME={}'.format('{}/{}'.format(inst_root_path, pkg_hive)))
 
     # 处理jar包
     logcall('rm $HIVE_HOME/lib/guava-19.0.jar')
@@ -102,7 +100,7 @@ if __name__ == '__main__':
     alllines = prevlines + sufflines
     with open('{}/etc/hadoop/hadoop-env.sh'.format(os.environ['HADOOP_HOME']), 'w') as cnf:
         cnf.writelines(alllines)
-    print('set the tez information in hadoop cluster({})'
+    logging.info('set the tez information in hadoop cluster({})'
           .format('{}/etc/hadoop/hadoop-env.sh'.format(os.environ['HADOOP_HOME'])))
 
     with open('{}/conf/hive-site.xml'.format(os.environ['HIVE_HOME']), 'w') as cnf:
@@ -158,7 +156,7 @@ if __name__ == '__main__':
         cnf.write('        <value>tez</value>\n')
         cnf.write('    </property>\n')
         cnf.write('</configuration>\n')
-    print('set the hive evironment({})'
+    logging.info('set the hive evironment({})'
           .format('{}/conf/hive-site.xml'.format(os.environ['HIVE_HOME'])))
 
     # 检测指定目录是否已经安装过tez引擎，
@@ -166,23 +164,23 @@ if __name__ == '__main__':
     pkg_tez = 'apache-tez-0.9.2'
     tez_install_path = inst_root_path + '/' + pkg_tez
     if os.path.exists(tez_install_path):
-        if not non_interactive:
-            print(tez_install_path + '已存在，您是想覆盖安装还是退出安装（y/n）：')
+        if not interactive:
+            logging.info(tez_install_path + '已存在，您是想覆盖安装还是退出安装（y/n）：')
             comfirm = yesorno()
             if 'y' == comfirm:
-                print('继续安装...')
+                logging.info('继续安装...')
                 shutil.rmtree(tez_install_path)
-                print('delete dir: ' + tez_install_path)
+                logging.info('delete dir: ' + tez_install_path)
             else:
-                print('退出安装...')
+                logging.info('退出安装...')
                 sys.exit()
         else:
             shutil.rmtree(tez_install_path)
-            print('delete dir: ' + tez_install_path)
+            logging.info('delete dir: ' + tez_install_path)
 
     logcall('tar xf {}/{}-bin.tar.gz -C {}'.format(software_root_path, pkg_tez, inst_root_path))
     os.rename('{0}/{1}-bin'.format(inst_root_path, pkg_tez), '{0}/{1}'.format(inst_root_path, pkg_tez))
-    print('rename {0}/{1}-bin to '.format(inst_root_path, pkg_tez) + '{0}/tez-0.9.2-3.1.2'.format(inst_root_path))
+    logging.info('rename {0}/{1}-bin to '.format(inst_root_path, pkg_tez) + '{0}/tez-0.9.2-3.1.2'.format(inst_root_path))
 
     with open('{}/{}/conf/tez-site.xml'.format(inst_root_path, pkg_tez), 'w') as cnf:
         cnf.write('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -201,15 +199,13 @@ if __name__ == '__main__':
         cnf.write('        <value>org.apache.tez.dag.history.logging.ats.ATSHistoryLoggingService</value>\n')
         cnf.write('    </property>\n')
         cnf.write('</configuration>\n')
-    print('set the tez evironment({})'
+    logging.info('set the tez evironment({})'
           .format('{}/{}/conf/tez-site.xml'.format(inst_root_path, pkg_tez)))
 
     logcall('rm {}/{}/lib/slf4j-log4j12-1.7.10.jar'.format(inst_root_path, pkg_tez))
 
     # 初始化元数据库(需要在配置文件/etc/my.cnf中配置mysql免密登录)
     # logcall('mysql -e "drop database if exists metastore"')
-    # logcall('mysql -e "create database metastore"')
-    # logcall('schematool -initSchema -dbType mysql >& /dev/null')
     logcall('mysql -e "create database metastore";'
             ' if [[ $? == 0 ]]; then schematool -initSchema -dbType mysql >& /dev/null; fi')
 
@@ -268,17 +264,10 @@ if __name__ == '__main__':
         cnf.write('    echo "Usage: $(basename $0) start|stop|restart"\n')
         cnf.write('    ;;\n')
         cnf.write('esac\n')
-    print('generate the manage hive service script: {}/bin/hivesvr.sh'.format(os.environ['HIVE_HOME']))
+    logging.info('generate the manage hive service script: {}/bin/hivesvr.sh'.format(os.environ['HIVE_HOME']))
 
     logcall('chmod u+x {}/bin/hivesvr.sh'.format(os.environ['HIVE_HOME']))
 
-    if non_interactive:
-        print('重启中...')
-        logcall('sync && logout')
-    else:
-        print('该软件安装之后需要重新登录（y/n）：')
-        if 'y' == yesorno():
-            logcall('sync && logout')
-            print('重启中...')
-        else:
-            print('请手动重启已使安装生效！')
+    logcall('sync')
+    logging.info('please relogin shell')
+    logging.info('{} has been successfully installed'.format(os.environ['HIVE_HOME']))

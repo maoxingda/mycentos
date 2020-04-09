@@ -9,7 +9,7 @@ import tty
 
 from subprocess import call
 
-LOG_FORMAT = "[%(asctime)s %(levelname)8s] %(message)s"
+LOG_FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 
 
@@ -45,7 +45,7 @@ def putenv(interactive: bool, profile_path: str, env_name: str, abspath: str, *r
                 if not find and what:
                     find = True
                     if interactive:
-                        logging.info(f'[{env_name}={os.environ[env_name]}] already existed'
+                        logging.info(f'[{env_name}={os.getenv(env_name)}] already existed'
                                      ', reset or stay the same (y/n)')
                         if 'y' != readchar():
                             logging.info(f'give up setting evironment variable {env_name}')

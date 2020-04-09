@@ -1,11 +1,10 @@
-#! /usr/bin/python3
+#! /usr/local/bin/python3
 # -*- coding: utf-8 -*-
 import argparse
-import getpass
 import shutil
 import tarfile
 
-from src.util import *
+from util import *
 
 if __name__ == '__main__':
     parse = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -54,11 +53,6 @@ if __name__ == '__main__':
 
     putenv(interactive, '/etc/profile.d/xenv.sh', 'FLUME_HOME', flume_home)
 
-    if interactive:
-        logging.info('the software needs to reboot after installation (y/n)')
-        if 'y' != readchar():
-            logging.warning('please reboot manually to make the installatin take effect')
-            sys.exit()
-
+    logcall('sync')
+    logging.info('please relogin shell')
     logging.info(f'{flume_home} has been successfully installed')
-    logcall('sync && logout')
