@@ -17,7 +17,7 @@ cd /home/maoxd/github/mycentos/src/shell || exit
 git rebase
 git pull
 
-files=(custom-env.sh custom-functions.sh)
+files=(xenv.sh xfunc.sh)
 
 for file in "${files[@]}"; do
 #  sudo rm -v -f "$file"
