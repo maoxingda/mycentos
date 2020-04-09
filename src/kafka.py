@@ -92,4 +92,4 @@ if __name__ == '__main__':
             sys.exit()
 
     logging.info(f'{kafka_home} has been successfully installed')
-    logcall('sync && sudo reboot')
+    logcall('sync && logout')

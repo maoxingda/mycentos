@@ -8,8 +8,6 @@ import tarfile
 from src.util import *
 
 if __name__ == '__main__':
-    # parse = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
-    # parse = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     parse = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     def_ins_path = '/opt/module'
@@ -22,11 +20,7 @@ if __name__ == '__main__':
     parse.add_argument('-n', '--non-interactive', action='store_true'
                        , help='whether silently install software or not')
 
-    # parse command line arguments
     args = parse.parse_args()
-
-    # print(args)
-    # sys.exit()
 
     package_path = args.package_path
     install_path = args.install_path
@@ -58,7 +52,7 @@ if __name__ == '__main__':
     os.remove(f'{flume_home}/lib/guava-11.0.2.jar')
     os.remove(f'{flume_home}/lib/slf4j-log4j12-1.7.25.jar')
 
-    putenv(interactive, f'/home/{getpass.getuser()}/.bash_profile', 'FLUME_HOME', flume_home)
+    putenv(interactive, '/etc/profile.d/xenv.sh', 'FLUME_HOME', flume_home)
 
     if interactive:
         logging.info('the software needs to reboot after installation (y/n)')
@@ -67,4 +61,4 @@ if __name__ == '__main__':
             sys.exit()
 
     logging.info(f'{flume_home} has been successfully installed')
-    logcall('sync && sudo reboot')
+    logcall('sync && logout')

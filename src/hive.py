@@ -274,11 +274,11 @@ if __name__ == '__main__':
 
     if non_interactive:
         print('重启中...')
-        logcall('sync && sudo reboot')
+        logcall('sync && logout')
     else:
         print('该软件安装之后需要重新登录（y/n）：')
         if 'y' == yesorno():
-            logcall('sync && sudo reboot')
+            logcall('sync && logout')
             print('重启中...')
         else:
             print('请手动重启已使安装生效！')
