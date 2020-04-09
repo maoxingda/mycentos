@@ -20,7 +20,6 @@ git pull
 files=(xenv.sh xfunc.sh)
 
 for file in "${files[@]}"; do
-#  sudo rm -v -f "$file"
   sudo cp -v /etc/profile.d/"$file" "$file"
 
   git add "$file"
