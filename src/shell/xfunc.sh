@@ -64,7 +64,7 @@ function putenv()
         echo "export PATH=\$PATH:\$$name/$arg" | sudo tee -a "$envfile" > /dev/null
     done
 
-    sudo sed -i.bak."$(date +%Y%m%d%H%M%S)" -e '/^$/{N;/\n$/D};' "$envfile" >& /dev/null
+    sudo sed -i.bak.$(date +%Y%m%d%H%M%S) -e '/^$/{N;/\n$/D};' "$envfile" >& /dev/null
 
     exit
 }
