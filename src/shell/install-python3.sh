@@ -21,4 +21,5 @@ cd /opt/module/Python-3.7.0 || exit
 
 make && make install
 
-ln -s /usr/local/python3/bin/python3.7 /bin/python3
+ln -s /usr/local/python3/bin/pip3 /bin/pip3
+ln -s /usr/local/python3/bin/python3 /bin/python3
