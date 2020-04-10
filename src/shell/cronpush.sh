@@ -11,6 +11,7 @@
 
 path=${PATH//:/\n}
 echo -e $path
+echo $PATH
 
 if [ ! -d "/home/maoxd/github/mycentos" ]; then
     mkdir -p "/home/maoxd/github/mycentos"
