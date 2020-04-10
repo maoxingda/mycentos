@@ -1,5 +1,6 @@
 alias egrep='grep -i -E'
 alias qfind='sudo updatedb; locate'
+alias jpsall='pdsh -w hadoop[11-13] jps | grep -v Jps | sort'
 
 export PS1="\[\e[37;40m\][\[\e[34;40m\]\u\[\e[37;40m\]@\[\e[35;40m\]\h \[\e[36;40m\]\W\[\e[0m\]]\\$ "
 
