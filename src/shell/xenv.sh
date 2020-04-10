@@ -25,3 +25,7 @@ export PATH=$PATH:$KAFKA_HOME/bin
 # FLUME_HOME
 export FLUME_HOME=/opt/module/tmp5/apache-flume-1.9.0
 export PATH=$PATH:$FLUME_HOME/bin
+
+# ZK_HOME
+export ZK_HOME=/opt/module/apache-zookeeper-3.5.7
+export PATH=$PATH:$ZK_HOME/bin
