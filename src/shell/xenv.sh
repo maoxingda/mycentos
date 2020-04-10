@@ -1,6 +1,7 @@
 unset MAILCHECK
 
 alias egrep='grep -i -E'
+alias sudo='sudo env PATH=$PATH'
 alias qfind='sudo updatedb; locate'
 alias jpsall='pdsh -w hadoop[11-13] jps | grep -v Jps | sort'
 
