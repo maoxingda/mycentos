@@ -1,4 +1,4 @@
-#! /usr/local/bin/python3
+#! /bin/python3
 # -*- coding: utf-8 -*-
 import argparse
 import shutil
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     flume_home = os.path.normpath(f'{install_path}/{software}')
 
-    # make install directory if not exists
+    # make install path if not exists
     if not os.path.exists(install_path):
         os.makedirs(install_path)
 
