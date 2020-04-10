@@ -5,8 +5,9 @@ import os
 import shutil
 import socket
 import sys
+import logging
 
-from util import *
+from src.util.shutil import readchar, logcall, putenv
 
 if __name__ == '__main__':
     # 前提条件
@@ -94,8 +95,8 @@ if __name__ == '__main__':
             if len(prevlines) != 0 and len(sufflines) != 0:
                 break
 
-    prevlines.append('export TEZ_CONF_DIR=$HADOOP_HOME/etc/hadoop\n')
-    prevlines.append('export TEZ_JARS={}/tez-0.10.1-SNAPSHOT\n'.format(inst_root_path))
+    prevlines.append(f'export TEZ_CONF_DIR={os.environ["HIVE_HOME"]}/conf\n')
+    prevlines.append(f'export TEZ_JARS={inst_root_path}/tez-0.10.1-SNAPSHOT\n')
     prevlines.append('export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:${TEZ_CONF_DIR}:${TEZ_JARS}/*:${TEZ_JARS}/lib/*\n\n')
     alllines = prevlines + sufflines
     with open('{}/etc/hadoop/hadoop-env.sh'.format(os.environ['HADOOP_HOME']), 'w') as cnf:
@@ -166,7 +167,7 @@ if __name__ == '__main__':
     if os.path.exists(tez_install_path):
         if not interactive:
             logging.info(tez_install_path + '已存在，您是想覆盖安装还是退出安装（y/n）：')
-            comfirm = yesorno()
+            comfirm = readchar()
             if 'y' == comfirm:
                 logging.info('继续安装...')
                 shutil.rmtree(tez_install_path)

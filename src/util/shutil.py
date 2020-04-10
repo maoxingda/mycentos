@@ -3,14 +3,12 @@
 import logging
 import os
 import re
+import shutil
 import sys
 import termios
 import tty
 
 from subprocess import call
-
-LOG_FORMAT = "[%(asctime)s %(levelname)s] %(message)s"
-logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 
 
 def logcall(args):
@@ -29,13 +27,25 @@ def readchar():
     return ch
 
 
+def chown(path: str, user: str, group: str):
+    if os.path.isfile(path):
+        shutil.chown(path, user, group)
+    else:
+        for root, dirs, files in os.walk(path):
+            shutil.chown(root, user, group)
+            for d in dirs:
+                shutil.chown(os.path.join(root, d), user, group)
+            for f in files:
+                shutil.chown(os.path.join(root, f), user, group)
+
+
 def putenv(interactive: bool, profile_path: str, env_name: str, abspath: str, *relpaths):
     env_name = env_name.upper()
 
     if re.match(r'^\d', env_name):
         raise ValueError('the evironment variable name can not start with digit：' + env_name)
 
-    select_lines: list[str] = []
+    select_lines = []
     if os.path.exists(profile_path):
         with open(profile_path, 'r') as conf:
             initial_lines = conf.readlines()
@@ -65,7 +75,7 @@ def putenv(interactive: bool, profile_path: str, env_name: str, abspath: str, *r
     for path in relpaths:
         select_lines.append(f'export PATH=$PATH:${env_name}/{path}\n')
 
-    remove_continuous_empty_lines: list[str] = list()
+    remove_continuous_empty_lines = []
     for i, line in enumerate(select_lines):
         if line == '\n' and len(remove_continuous_empty_lines) != 0 \
                 and remove_continuous_empty_lines[-1] == '\n':

@@ -1,11 +1,15 @@
 #! /bin/python3
 # -*- coding: utf-8 -*-
 import argparse
+import logging
+import os
+import re
 import shutil
 import socket
+import sys
 import tarfile
 
-from util import *
+from src.util.shutil import readchar, putenv, logcall
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -83,7 +87,7 @@ if __name__ == '__main__':
     with open(f'{kafka_home}/config/server.properties', 'w') as file:
         file.writelines(lines)
 
-    putenv(interactive, '/etc/profile.d/custom-env.sh', 'KAFKA_HOME', kafka_home)
+    putenv(interactive, '/etc/profile.d/xenv.sh', 'KAFKA_HOME', kafka_home)
 
     logcall('sync')
     logging.info('please relogin shell')
