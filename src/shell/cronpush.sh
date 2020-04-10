@@ -7,11 +7,6 @@
 # | | | | |
 # * * * * * user-name command or shell to be executed
 
-# PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
-
-path=${PATH//:/\n}
-echo -e $path
-echo $PATH
 
 if [ ! -d "/home/maoxd/github/mycentos" ]; then
     mkdir -p "/home/maoxd/github/mycentos"
@@ -29,8 +24,8 @@ for file in "${files[@]}"; do
   sudo cp -v /etc/profile.d/"$file" "$file"
 
   git add "$file"
-
-  git commit -m 'cron push...'
 done
+
+git commit -m 'cron push...'
 
 git push
