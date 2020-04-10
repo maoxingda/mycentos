@@ -7,8 +7,13 @@
 # | | | | |
 # * * * * * user-name command or shell to be executed
 
-if [ ! -d "/home/maoxd/github" ]; then
-    mkdir "/home/maoxd/github"
+# PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
+
+path=${PATH//:/\n}
+echo -e $path
+
+if [ ! -d "/home/maoxd/github/mycentos" ]; then
+    mkdir -p "/home/maoxd/github/mycentos"
     git clone git@github.com:maoxingda/mycentos.git
 fi
 
