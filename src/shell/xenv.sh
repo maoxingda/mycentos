@@ -5,7 +5,7 @@ alias egrep='grep -i -E'
 alias sudo='sudo env PATH=$PATH'
 alias qfind='sudo updatedb; locate'
 alias pdshall='pdsh -w hadoop[11-13]'
-alias jpsall='pdsh -w hadoop[11-13] jps | grep -v Jps | sort'
+alias jpsall='pdsh -w hadoop[11-13] jps | grep -v Jps | sort | egrep ^\\w+[0-9]+:'
 
 export PS1="\[\e[37;40m\][\[\e[34;40m\]\u\[\e[37;40m\]@\[\e[35;40m\]\h \[\e[36;40m\]\W\[\e[0m\]]\\$ "
 
@@ -29,3 +29,7 @@ export PATH=$PATH:$FLUME_HOME/bin
 # ZK_HOME
 export ZK_HOME=/opt/module/apache-zookeeper-3.5.7
 export PATH=$PATH:$ZK_HOME/bin
+
+#HBASE_HOME
+export HBASE_HOME=/opt/module/hbase-2.0.5
+export PATH=$PATH:$HBASE_HOME/bin
