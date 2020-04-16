@@ -3,6 +3,7 @@
 import argparse
 import re
 import sys
+sys.path.append('..')
 
 from src.util.shutil import logcall
 

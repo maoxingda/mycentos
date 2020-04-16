@@ -7,7 +7,7 @@ import socket
 import sys
 import logging
 
-from src.util.shutil import readchar, logcall, putenv
+from src.util.shutil import readchar, logcall, putenv, chown
 
 if __name__ == '__main__':
     # 前提条件
@@ -67,6 +67,7 @@ if __name__ == '__main__':
 
     logcall('tar xf {}/{}-bin.tar.gz -C {}'.format(software_root_path, pkg_hive, inst_root_path))
     os.rename('{0}/{1}-bin'.format(inst_root_path, pkg_hive), '{0}/{1}'.format(inst_root_path, pkg_hive))
+    chown(f'{inst_root_path}/{pkg_hive}', 'maoxd', 'hadoop')
     logging.info('rename {0}/{1}-bin to '.format(inst_root_path, pkg_hive)
           + '{0}/{1}'.format(inst_root_path, pkg_hive))
 
@@ -96,7 +97,7 @@ if __name__ == '__main__':
                 break
 
     prevlines.append(f'export TEZ_CONF_DIR={os.environ["HIVE_HOME"]}/conf\n')
-    prevlines.append(f'export TEZ_JARS={inst_root_path}/tez-0.10.1-SNAPSHOT\n')
+    prevlines.append(f'export TEZ_JARS={inst_root_path}/apache-tez-0.9.2\n')
     prevlines.append('export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:${TEZ_CONF_DIR}:${TEZ_JARS}/*:${TEZ_JARS}/lib/*\n\n')
     alllines = prevlines + sufflines
     with open('{}/etc/hadoop/hadoop-env.sh'.format(os.environ['HADOOP_HOME']), 'w') as cnf:
@@ -165,7 +166,7 @@ if __name__ == '__main__':
     pkg_tez = 'apache-tez-0.9.2'
     tez_install_path = inst_root_path + '/' + pkg_tez
     if os.path.exists(tez_install_path):
-        if not interactive:
+        if interactive:
             logging.info(tez_install_path + '已存在，您是想覆盖安装还是退出安装（y/n）：')
             comfirm = readchar()
             if 'y' == comfirm:
@@ -179,8 +180,11 @@ if __name__ == '__main__':
             shutil.rmtree(tez_install_path)
             logging.info('delete dir: ' + tez_install_path)
 
+    logcall(f'hdfs dfs -mkdir /tez')
+    logcall(f'hdfs dfs -put {inst_root_path}/share/tez.tar.gz /tez')
     logcall('tar xf {}/{}-bin.tar.gz -C {}'.format(software_root_path, pkg_tez, inst_root_path))
     os.rename('{0}/{1}-bin'.format(inst_root_path, pkg_tez), '{0}/{1}'.format(inst_root_path, pkg_tez))
+    chown(f'{inst_root_path}/{pkg_tez}', 'maoxd', 'hadoop')
     logging.info('rename {0}/{1}-bin to '.format(inst_root_path, pkg_tez) + '{0}/tez-0.9.2-3.1.2'.format(inst_root_path))
 
     with open('{}/{}/conf/tez-site.xml'.format(inst_root_path, pkg_tez), 'w') as cnf:
@@ -265,6 +269,7 @@ if __name__ == '__main__':
         cnf.write('    echo "Usage: $(basename $0) start|stop|restart"\n')
         cnf.write('    ;;\n')
         cnf.write('esac\n')
+    chown(f'{os.environ["HIVE_HOME"]}', 'maoxd', 'hadoop')
     logging.info('generate the manage hive service script: {}/bin/hivesvr.sh'.format(os.environ['HIVE_HOME']))
 
     logcall('chmod u+x {}/bin/hivesvr.sh'.format(os.environ['HIVE_HOME']))

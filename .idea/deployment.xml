@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="root@hadoop11:22">
+  <component name="PublishConfigData" autoUpload="Always" serverName="maoxd@hadoop17:22">
     <serverData>
       <paths name="hadoop11">
         <serverdata>
@@ -9,10 +9,17 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="root@hadoop11:22">
+      <paths name="maoxd@hadoop11:22">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/pycharm_project_940" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="maoxd@hadoop17:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/pycharm_project_544" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
