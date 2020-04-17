@@ -1,0 +1,17 @@
+#! /bin/bash
+
+function xecho()
+{
+    echo -e "\e[33m$*\e[0m"
+}
+
+function xecho2()
+{
+    echo -e "\e[31m$*\e[0m"
+}
+
+for host in hadoop{102..104}; do
+    xecho "----------[$host]----------"
+    #xecho2 $(ssh $host "$*")
+    ssh $host "$*"
+done
