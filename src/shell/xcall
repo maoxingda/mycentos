@@ -10,8 +10,13 @@ function xecho2()
     echo -e "\e[31m$*\e[0m"
 }
 
+if [ $# -lt 1 ]; then
+    xecho "usage:"
+    xecho2 "    xcall <cmds>"
+    exit
+fi
+
 for host in hadoop{102..104}; do
     xecho "----------[$host]----------"
-    #xecho2 $(ssh $host "$*")
     ssh $host "$*"
 done
