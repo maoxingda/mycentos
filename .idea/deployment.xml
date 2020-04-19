@@ -1,25 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="maoxd@hadoop17:22">
+  <component name="PublishConfigData" autoUpload="Always" serverName="maoxd@hadoop102:22">
     <serverData>
-      <paths name="hadoop11">
+      <paths name="maoxd@hadoop102:22">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="maoxd@hadoop11:22">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="maoxd@hadoop17:22">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/tmp/pycharm_project_544" local="$PROJECT_DIR$" />
+            <mapping deploy="/tmp/pycharm_project_970" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

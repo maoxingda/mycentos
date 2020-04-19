@@ -20,7 +20,7 @@ if __name__ == '__main__':
             dirname = path
             if os.path.isfile(path):
                 dirname = os.path.dirname(path)
-            print(path, dirname)
+            # print(path, dirname)
 
             subprocess.call(f'ssh {host} "mkdir -p {dirname}"', shell=True)
             if os.path.isfile(path):
