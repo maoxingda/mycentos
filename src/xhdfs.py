@@ -27,9 +27,9 @@ class PathWacherCompleter(PathWacher):
     @staticmethod
     def completer(text, state):
         try:
-            return [ch for ch in ['exit',
-                                  'log_enable',
-                                  'cmd_enable'] + app.wacher().choices() if ch.startswith(text)][state]
+            solid = ['exit', 'cmd_enable', 'log_enable']
+            results = [ch for ch in solid + app.wacher().choices() if ch.startswith(text)]
+            return results[state]
         except IndexError:
             return None
 
@@ -571,7 +571,7 @@ if __name__ == '__main__':
         app = Main()
 
         app.main(len(sys.argv), sys.argv)
-    except Exception as e:
+    except (EOFError, KeyboardInterrupt) as e:
         print(e)
 
 # Usage: hadoop fs [generic options]
