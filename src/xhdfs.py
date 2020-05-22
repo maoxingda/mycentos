@@ -96,12 +96,12 @@ class PathWacherCompleter(PathWacher):
     def choice_layout(self):
         if app.enable_log:
             if len(self.__local_choices) > 0:
-                print('\n=============local choices=============')
+                print('\n--->local')
             for choice in self.__local_choices:
                 print(choice, end=' ')
 
             if len(self.__remote_choices) > 0:
-                print('\n\n=============remote choices============')
+                print('\n\n--->hdfs')
             for choice in self.__remote_choices:
                 print(choice, end=' ')
 
@@ -414,6 +414,7 @@ class CmdHelper:
                'copyToLocal',
                'get',
                'head',
+               'help',
                'ls',
                'mkdir',
                'moveFromLocal',
@@ -607,6 +608,9 @@ class CmdHelper:
         # hadoop fs -head URI
         elif cname == 'head':
             CmdHelper.head(cmd)
+        # hadoop fs -help
+        elif cname == 'help':
+            CmdHelper.help(cmd)
         # hadoop fs -ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] <args>
         elif cname == 'ls':
             CmdHelper.ls(cmd)
@@ -949,6 +953,11 @@ class CmdHelper:
         for i in range(1, len(cmd)):
             if not cmd[i].startswith('hdfs://'):
                 cmd[i] = app.path().join(cmd[i])
+        CmdHelper.logcall(cmd)
+
+    @staticmethod
+    def help(cmd):
+        # hadoop fs -help
         CmdHelper.logcall(cmd)
 
 
