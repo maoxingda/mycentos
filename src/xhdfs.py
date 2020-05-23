@@ -1,4 +1,5 @@
 #! /bin/python3
+import atexit
 import os
 import re
 import readline
@@ -60,8 +61,12 @@ class PathWacher:
 class PathWacherCompleter(PathWacher):
 
     def __init__(self):
-        readline.set_completer(PathWacherCompleter.completer)
         readline.parse_and_bind("tab: complete")
+        readline.set_completer(PathWacherCompleter.completer)
+        self.__histfile = os.path.expandvars('${HOME}/.xhdfs_history')
+        if os.path.exists(self.__histfile):
+            readline.read_history_file(self.__histfile)
+        atexit.register(self.save_histfile)
 
         self.__remote_choices = check_output([
             'hdfs', 'dfs', '-ls', '-C', '/']).decode('utf-8').split('\n')[:-1]
@@ -71,11 +76,33 @@ class PathWacherCompleter(PathWacher):
     @staticmethod
     def completer(text, state):
         try:
-            results = [ch for ch in CmdHelper.hdfscmd
+            lchoices = []
+            rchoices = []
+
+            line = readline.get_line_buffer()
+            line = re.split(r'\s+', line)[-1]
+
+            if line.find('/') != -1:
+
+                line = os.path.dirname(line)
+                path = os.path.join(os.getcwd(), line)
+
+                if os.path.exists(path):
+                    lchoices = check_output(['ls', path]).decode('utf-8').split('\n')[:-1]
+                else:
+                    path = os.path.join(app.path().cwd(), line)
+
+                    rchoices = check_output(['hdfs', 'dfs', '-ls', '-C', path]).decode('utf-8').split('\n')[:-1]
+                    rchoices = [rch.split('/')[-1] for rch in rchoices]
+
+            results = [ch for ch in CmdHelper.hdfscmd + lchoices + rchoices
                        + app.wacher().choices() if ch.startswith(text)]
             return results[state]
         except IndexError:
             return None
+
+    def save_histfile(self):
+        readline.write_history_file(self.__histfile)
 
     def mk_local_choices(self, apath):
         self.__local_choices = check_output(['ls', apath]).decode('utf-8').split('\n')[:-1]
@@ -690,11 +717,11 @@ class CmdHelper:
         read_from_stdin = [ele for ele in cmd[1:] if ele == '-']
 
         uri = r'hdfs://(?:\w+|(?:\d{1,3})(?:(\.\w+){1,3}))(/\w+)+'
-        
+
         if read_from_stdin:
             # hadoop fs -appendToFile - hdfs://[host|ip]/hadoopfile
             if not cmd[2].startswith('hdfs://'):
-                app.path().join(cmd[2])
+                cmd[2] = app.path().join(cmd[2])
 
             CmdHelper.logcall(cmd)
         else:
@@ -958,7 +985,40 @@ class CmdHelper:
     @staticmethod
     def help(cmd):
         # hadoop fs -help
-        CmdHelper.logcall(cmd)
+        if len(cmd) == 1:
+            CmdHelper.logcall(cmd)
+        elif cmd[1] == 'appendToFile':
+            print('appendToFile <localsrc> ... <dst>')
+        elif cmd[1] == 'cat':
+            print('cat [-ignoreCrc] <src> ...')
+        elif cmd[1] == 'copyFromLocal':
+            print('copyFromLocal [-f] [-p] [-l] [-d] [-t <thread count>] <localsrc> ... <dst>')
+        elif cmd[1] == 'copyToLocal':
+            print('copyToLocal [-f] [-p] [-ignoreCrc] [-crc] <src> ... <localdst>')
+        elif cmd[1] == 'get':
+            print('get [-f] [-p] [-ignoreCrc] [-crc] <src> ... <localdst>')
+        elif cmd[1] == 'head':
+            print('head <file>')
+        elif cmd[1] == 'ls':
+            print('ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] [<path> ...]')
+        elif cmd[1] == 'mkdir':
+            print('mkdir [-p] <path> ...')
+        elif cmd[1] == 'moveFromLocal':
+            print('moveFromLocal <localsrc> ... <dst>')
+        elif cmd[1] == 'moveToLocal':
+            print('moveToLocal <src> <localdst>')
+        elif cmd[1] == 'mv':
+            print('mv <src> ... <dst>')
+        elif cmd[1] == 'put':
+            print('put [-f] [-p] [-l] [-d] <localsrc> ... <dst>')
+        elif cmd[1] == 'rm':
+            print('rm [-f] [-r|-R] [-skipTrash] [-safely] <src> ...')
+        elif cmd[1] == 'tail':
+            print('tail [-f] [-s <sleep interval>] <file>')
+        elif cmd[1] == 'touch':
+            print('touch [-a] [-m] [-t TIMESTAMP ] [-c] <path> ...')
+        elif cmd[1] == 'truncate':
+            print('truncate [-w] <length> <path> ...')
 
 
 @unique
