@@ -68,9 +68,14 @@ class PathWacherCompleter(PathWacher):
             readline.read_history_file(self.__histfile)
         atexit.register(self.save_histfile)
 
-        self.__remote_choices = check_output([
-            'hdfs', 'dfs', '-ls', '-C', '/']).decode('utf-8').split('\n')[:-1]
-        self.__remote_choices = [os.path.basename(d) for d in self.__remote_choices]
+        self.__remote_choices = []
+        try:
+            self.__remote_choices = check_output([
+                'hdfs', 'dfs', '-ls', '-C', '/']).decode('utf-8').split('\n')[:-1]
+            self.__remote_choices = [os.path.basename(d) for d in self.__remote_choices]
+        except Exception as ex:
+            pass
+
         self.__local_choices = check_output(['ls', os.getcwd()]).decode('utf-8').split('\n')[:-1]
 
     @staticmethod
