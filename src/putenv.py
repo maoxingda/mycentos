@@ -7,6 +7,8 @@ import sys
 if __name__ == '__main__':
     args = sys.argv[1:]
     env_name = args[0].upper()
+    if not env_name.endswith('_HOME'):
+        env_name = f'{env_name}_HOME'
     profile_path = '/etc/profile.d/xenv.sh'
 
     select_lines = []
