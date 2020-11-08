@@ -1,4 +1,4 @@
-#! /bin/python3
+#! /Users/4paradigm/miniconda2/envs/operator-quickstart/bin/python
 import atexit
 import os
 import re
@@ -71,7 +71,7 @@ class PathWacherCompleter(PathWacher):
         self.__remote_choices = []
         try:
             self.__remote_choices = check_output([
-                'hdfs', 'dfs', '-ls', '-C', '/']).decode('utf-8').split('\n')[:-1]
+                'hdfs', 'dfs', '-ls', '/']).decode('utf-8').split(' +')[:-1].split('\n')[:-1]
             self.__remote_choices = [os.path.basename(d) for d in self.__remote_choices]
         except Exception as ex:
             pass
@@ -113,7 +113,7 @@ class PathWacherCompleter(PathWacher):
         self.__local_choices = check_output(['ls', apath]).decode('utf-8').split('\n')[:-1]
 
     def mk_remote_choices(self, apath):
-        self.__remote_choices = check_output(['hdfs', 'dfs', '-ls', '-C', apath]).decode('utf-8').split('\n')[:-1]
+        self.__remote_choices = check_output(['hdfs', 'dfs', '-ls', apath]).decode('utf-8').split(' +')[:-1].split('\n')[:-1]
         self.__remote_choices = [rch.split('/')[-1] for rch in self.__remote_choices]
 
     def choices(self):

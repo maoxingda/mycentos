@@ -1,4 +1,4 @@
-#! /bin/python3
+#! /usr/local/bin/python3
 import atexit
 import os
 import re
@@ -304,10 +304,10 @@ class Path:
             super().__init__(cwd, oldpwd)
 
         def cd(self, path):
-            if path[0] == '.':
+            if path[0] == '.' or path[1] == '.':
                 self.oldpwd = self.cwd
                 self.cwd = os.path.dirname(self.cwd)
-            elif path[0] == '..':
+            elif path[0] == '..' or path[1] == '..':
                 self.oldpwd = self.cwd
                 self.cwd = os.path.dirname(self.cwd)
                 self.cwd = os.path.dirname(self.cwd)
@@ -449,6 +449,7 @@ class CmdHelper:
                'head',
                'help',
                'ls',
+               'lsr',
                'mkdir',
                'moveFromLocal',
                'moveToLocal',
@@ -493,7 +494,11 @@ class CmdHelper:
                 print(cmd)
             call(cmd, shell=True)
         else:
-            cmd = ' '.join([f'hadoop fs -{cmd[0]}'] + cmd[1:])
+            if len(sys.argv) > 1 and sys.argv[1]:
+                cmd[-1] = f'hdfs://{sys.argv[1]}{cmd[-1]}'
+
+            cmd = f'hadoop fs -{cmd[0]} ' + ' '.join(cmd[1:])
+
             if app.enable_cmd:
                 print(f'---> {cmd}')
             call(cmd, shell=True)
@@ -613,6 +618,7 @@ class CmdHelper:
             app.enable_log = not app.enable_log
         elif cname == 'cmd_enable':
             app.enable_cmd = not app.enable_cmd
+            [print(c) for c in CmdHelper.hdfscmd]
 
         # impl separately because there are two file systems (local and hdfs)
         elif cname == '.' or cname == '..' or cname == 'cd':
@@ -645,7 +651,7 @@ class CmdHelper:
         elif cname == 'help':
             CmdHelper.help(cmd)
         # hadoop fs -ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] <args>
-        elif cname == 'ls':
+        elif cname == 'ls' or cname == 'lsr':
             CmdHelper.ls(cmd)
         # hadoop fs -mkdir [-p] <paths>
         elif cname == 'mkdir':
@@ -832,6 +838,10 @@ class CmdHelper:
     @staticmethod
     def ls(cmd):
         # hadoop fs -ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] <args>
+        if cmd[0] == 'lsr':
+            cmd[0] = 'ls'
+            cmd.insert(1, '-R')
+
         if len(cmd) == 1 or cmd[-1].startswith('-'):
             cmd.append(app.path().cwd())
 
