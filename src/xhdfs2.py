@@ -494,9 +494,6 @@ class CmdHelper:
                 print(cmd)
             call(cmd, shell=True)
         else:
-            if len(sys.argv) > 1 and sys.argv[1]:
-                cmd[-1] = f'hdfs://{sys.argv[1]}{cmd[-1]}'
-
             cmd = f'hadoop fs -{cmd[0]} ' + ' '.join(cmd[1:])
 
             if app.enable_cmd:
@@ -1082,6 +1079,21 @@ class Main:
 
     def init(self, args, argv):
         self.__enable_log = args > 1 and argv[1] == '1'
+
+        # set hdfs cluster address
+        if len(argv) > 1 and argv[1]:
+            if os.getenv('HADOOP_HOME'):
+                core_site_file = os.path.join(os.environ['HADOOP_HOME'], 'etc/hadoop/core-site.xml')
+                with open(core_site_file) as f:
+                    core_site_conf = f.readlines()
+                for row, line in enumerate(core_site_conf):
+                    if line.find('hdfs://') != -1:
+                        core_site_conf[row] = ' '*8 + f'<value>hdfs://{argv[1]}</value>\n'
+                        break
+                with open(core_site_file, 'w') as f:
+                    f.writelines(core_site_conf)
+            else:
+                print('HADOOP_HOME not find!')
 
     @property
     def mode(self):
