@@ -121,7 +121,7 @@ class PathWacherCompleter(PathWacher):
         return self.__local_choices + self.__remote_choices
 
     def pathchange(self, apath):
-        if app.mode:
+        if app.is_hdfs_mode:
             self.mk_remote_choices(apath)
         else:
             self.mk_local_choices(apath)
@@ -304,10 +304,10 @@ class Path:
             super().__init__(cwd, oldpwd)
 
         def cd(self, path):
-            if path[0] == '.' or path[1] == '.':
+            if path[0] == '.' or len(path) > 1 and path[1] == '.':
                 self.oldpwd = self.cwd
                 self.cwd = os.path.dirname(self.cwd)
-            elif path[0] == '..' or path[1] == '..':
+            elif path[0] == '..' or len(path) > 1 and path[1] == '..':
                 self.oldpwd = self.cwd
                 self.cwd = os.path.dirname(self.cwd)
                 self.cwd = os.path.dirname(self.cwd)
@@ -388,7 +388,7 @@ class Path:
         prompt = '>'
         cmd_mode_prompt = 'hdfs'
 
-        if not app.mode:
+        if not app.is_hdfs_mode:
             prompt += '>>'
             cmd_mode_prompt = 'local'
 
@@ -410,9 +410,9 @@ class Path:
         self.__path.mkdir(apath)
 
     def rmdir(self, apath):
-        if app.mode == CmdMode.hdfs:
+        if app.is_hdfs_mode == CmdMode.hdfs:
             self.__remote_path.rmdir(apath)
-        elif app.mode == CmdMode.local:
+        elif app.is_hdfs_mode == CmdMode.local:
             pass
 
     def pwd(self):
@@ -458,7 +458,9 @@ class CmdHelper:
                'rm',
                'tail',
                'touch',
-               'truncate'
+               'history',
+               'truncate',
+               'cp'
                ]
 
     # pattern
@@ -487,18 +489,15 @@ class CmdHelper:
 
     @staticmethod
     def logcall(cmd):
-        if not app.mode:
+        if not app.is_hdfs_mode:
             if len(cmd) > 0:
                 cmd = ' '.join(cmd)
-            if app.enable_cmd:
-                print(cmd)
-            call(cmd, shell=True)
         else:
             cmd = f'hadoop fs -{cmd[0]} ' + ' '.join(cmd[1:])
 
-            if app.enable_cmd:
-                print(f'---> {cmd}')
-            call(cmd, shell=True)
+        if app.enable_cmd:
+            print(cmd)
+        call(cmd, shell=True)
 
     @staticmethod
     def __ischdircmd(cmd):
@@ -542,7 +541,7 @@ class CmdHelper:
             elif what[0] == 'exit':
                 sys.exit()
             elif what[0] == '!':
-                app.mode = not app.mode
+                app.is_hdfs_mode = not app.is_hdfs_mode
             # if length == 1:
             #     what.append(app.path().cwd())
             # else:
@@ -606,7 +605,7 @@ class CmdHelper:
         cname = cmd[0]
 
         if cname == '!':
-            app.mode = not app.mode
+            app.is_hdfs_mode = not app.is_hdfs_mode
         elif cname == 'pwd':
             print(app.path().cwd())
         elif cname == 'exit':
@@ -622,8 +621,11 @@ class CmdHelper:
             app.path().cd(cmd)
 
         # system commands
-        elif not app.mode:
+        elif not app.is_hdfs_mode:
             return CmdHelper.logcall(cmd)
+
+        elif cname == 'history':
+            CmdHelper.history()
 
         # hdfs shell commands
         # hadoop fs -appendToFile <localsrc> ... <dst>
@@ -666,7 +668,7 @@ class CmdHelper:
         elif cname == 'put':
             CmdHelper.put(cmd)
         # hadoop fs -rm [-f] [-r |-R] [-skipTrash] [-safely] URI [URI ...]
-        elif cname == 'rm':
+        elif cname == 'rm' or cname == 'rmr':
             CmdHelper.rm(cmd)
         # hadoop fs -tail [-f] URI
         elif cname == 'tail':
@@ -861,6 +863,7 @@ class CmdHelper:
             if not cmd[i].startswith('hdfs://') and not cmd[i].startswith('-'):
                 cmd[i] = app.path().join(cmd[i])
 
+        cmd[0] += ' -p'
         CmdHelper.logcall(cmd)
 
     @staticmethod
@@ -953,6 +956,9 @@ class CmdHelper:
     @staticmethod
     def rm(cmd):
         # hadoop fs -rm [-f] [-r |-R] [-skipTrash] [-safely] URI [URI ...]
+        if cmd[0] == 'rmr':
+            cmd[0] = 'rm'
+            cmd.insert(1, '-R')
 
         if len(cmd) < 2 or cmd[-1].startswith('-'):
             return
@@ -1033,6 +1039,14 @@ class CmdHelper:
         elif cmd[1] == 'truncate':
             print('truncate [-w] <length> <path> ...')
 
+    @staticmethod
+    def history():
+        hist = os.path.expandvars('${HOME}/.xhdfs_history')
+        if os.path.exists(hist):
+            with open(hist) as f:
+                for cmd in f.readlines():
+                    print(cmd, end='')
+
 
 @unique
 class CmdMode(Enum):
@@ -1096,11 +1110,11 @@ class Main:
                 print('HADOOP_HOME not find!')
 
     @property
-    def mode(self):
+    def is_hdfs_mode(self):
         return self.__hdfs
 
-    @mode.setter
-    def mode(self, val):
+    @is_hdfs_mode.setter
+    def is_hdfs_mode(self, val):
         self.__hdfs = val
         self.path().mode(val)
 
@@ -1127,9 +1141,9 @@ class Main:
         self.__enable_cmd = val
 
     def exit(self):
-        if self.mode == CmdMode.local:
-            self.mode = CmdMode.hdfs
-        elif self.mode == CmdMode.hdfs:
+        if self.is_hdfs_mode == CmdMode.local:
+            self.is_hdfs_mode = CmdMode.hdfs
+        elif self.is_hdfs_mode == CmdMode.hdfs:
             sys.exit()
 
 
