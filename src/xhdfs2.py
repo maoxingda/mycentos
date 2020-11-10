@@ -679,6 +679,9 @@ class CmdHelper:
         # hadoop fs -truncate [-w] <length> <paths>
         elif cname == 'truncate':
             CmdHelper.truncate(cmd)
+        # hadoop fs -cp [-f] [-p | -p[topax]] URI [URI ...] <dest>
+        elif cname == 'cp':
+            CmdHelper.cp(cmd)
 
             # elif cmd[0] == '!':
             #     app.mode = not app.mode
@@ -1046,6 +1049,17 @@ class CmdHelper:
             with open(hist) as f:
                 for cmd in f.readlines():
                     print(cmd, end='')
+
+    @staticmethod
+    def cp(cmd):
+        # hadoop fs -cp [-f] [-p | -p[topax]] URI [URI ...] <dest>
+        if len(cmd) < 3:
+            return
+
+        for i in range(1, len(cmd)):
+            cmd[i] = app.path().join(cmd[i])
+
+        CmdHelper.logcall(cmd)
 
 
 @unique
