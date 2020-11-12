@@ -249,6 +249,19 @@ class BasePath:
         pass
 
 
+def path_basename(path: str):
+    if len(path) > 0:
+        if path != '/':
+            if path.endswith('/'):
+                path = os.path.basename(os.path.dirname(path))
+            else:
+                path = os.path.basename(path)
+    else:
+        path = '/'
+
+    return path
+
+
 class Path:
 
     def __init__(self):
@@ -377,13 +390,8 @@ class Path:
         self.__remote_path.add_wacher(awacher)
 
     def prompt(self):
-        local_bname = os.path.basename(self.__local_path.cwd)
-        if local_bname == '':
-            local_bname = '/'
-
-        remote_bname = os.path.basename(self.__remote_path.cwd)
-        if remote_bname == '':
-            remote_bname = '/'
+        local_bname = path_basename(self.__local_path.cwd)
+        remote_bname = path_basename(self.__remote_path.cwd)
 
         prompt = '>'
         cmd_mode_prompt = 'hdfs'
