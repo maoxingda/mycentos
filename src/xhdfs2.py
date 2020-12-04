@@ -672,7 +672,7 @@ class CmdHelper:
         # hadoop fs -mv URI [URI ...] <dest>
         elif cname == 'mv':
             CmdHelper.mv(cmd)
-        # hadoop fs -put [-f] [-p] [-l] [-d] [ - | <localsrc1> .. ]. <dst>
+        # hadoop fs -put [-f] [-p] [-l] [-d] <localsrc1> ... <dst>
         elif cname == 'put':
             CmdHelper.put(cmd)
         # hadoop fs -rm [-f] [-r |-R] [-skipTrash] [-safely] URI [URI ...]
@@ -925,16 +925,26 @@ class CmdHelper:
 
     @staticmethod
     def put(cmd):
-
-        # hadoop fs -put [-f] [-p] [-l] [-d] [ - | <localsrc1> .. ]. <dst>
-
-        if len(cmd) == 1 or cmd[-1].startswith('-'):
+        # hadoop fs -put [-f] [-p] [-l] [-d] <localsrc1> ... <dst>
+        what = re.fullmatch(r'put\s+(-f\s+|-p\s+|-l\s+|-d\s+)*(/?.+(/.+)*){1}(\s+/?(.+)?(/.+)*/?)?', ' '.join(cmd))
+        if not what:
             return
 
         lcwd, rcwd = app.path().dcwd()
 
-        if len(cmd) == 2:
+        non_option = 0
+        for item in cmd:
+            if not item.startswith('-'):
+                non_option += 1
+
+        if non_option < 3:
             cmd.append(rcwd)
+        elif re.fullmatch(r'(.+)(/.+)*/?', cmd[-1]):
+            cmd[-1] = os.path.join(rcwd, cmd[-1])
+
+        CmdHelper.logcall(cmd)
+
+        return
 
         read_from_stdin = [ele for ele in cmd[1:] if ele == '-']
 
@@ -950,14 +960,12 @@ class CmdHelper:
             addr = [ele for ele in cmd[1:] if re.fullmatch(uri, ele)]
             if addr:
                 # hadoop fs -put localfile ... hdfs://[host|ip]/hadoopfile
-                lcwd, rcwd = app.path().dcwd()
                 for i in range(1, len(cmd) - 1):
                     cmd[i] = os.path.join(lcwd, cmd[i])
 
                 CmdHelper.logcall(cmd)
             else:
                 # hadoop fs -put localfile ... /hadoopfile
-                lcwd, rcwd = app.path().dcwd()
                 for i in range(1, len(cmd) - 1):
                     cmd[i] = os.path.join(lcwd, cmd[i])
                 cmd[-1] = os.path.join(rcwd, cmd[-1])
