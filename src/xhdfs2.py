@@ -1,163 +1,139 @@
 #! /usr/local/bin/python3
-import atexit
 import os
 import re
-import readline
 import sys
-from enum import Enum, unique
+import atexit
+import readline
+import argparse
 from subprocess import call, check_output
 
 
-# Usage: hadoop fs [generic options]
-# 	[-appendToFile <localsrc> ... <dst>]
-# 	[-cat [-ignoreCrc] <src> ...]
-# 	[-checksum <src> ...]
-# 	[-chgrp [-R] GROUP PATH...]
-# 	[-chmod [-R] <MODE[,MODE]... | OCTALMODE> PATH...]
-# 	[-chown [-R] [OWNER][:[GROUP]] PATH...]
-# 	[-copyFromLocal [-f] [-p] [-l] [-d] [-t <thread count>] <localsrc> ... <dst>]
-# 	[-copyToLocal [-f] [-p] [-ignoreCrc] [-crc] <src> ... <localdst>]
-# 	[-count [-q] [-h] [-v] [-t [<storage type>]] [-u] [-x] [-e] <path> ...]
-# 	[-cp [-f] [-p | -p[topax]] [-d] <src> ... <dst>]
-# 	[-createSnapshot <snapshotDir> [<snapshotName>]]
-# 	[-deleteSnapshot <snapshotDir> <snapshotName>]
-# 	[-df [-h] [<path> ...]]
-# 	[-du [-s] [-h] [-v] [-x] <path> ...]
-# 	[-expunge]
-# 	[-find <path> ... <expression> ...]
-# 	[-get [-f] [-p] [-ignoreCrc] [-crc] <src> ... <localdst>]
-# 	[-getfacl [-R] <path>]
-# 	[-getfattr [-R] {-n name | -d} [-e en] <path>]
-# 	[-getmerge [-nl] [-skip-empty-file] <src> <localdst>]
-# 	[-head <file>]
-# 	[-help [cmd ...]]
-# 	[-ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] [<path> ...]]
-# 	[-mkdir [-p] <path> ...]
-# 	[-moveFromLocal <localsrc> ... <dst>]
-# 	[-moveToLocal <src> <localdst>]
-# 	[-mv <src> ... <dst>]
-# 	[-put [-f] [-p] [-l] [-d] <localsrc> ... <dst>]
-# 	[-renameSnapshot <snapshotDir> <oldName> <newName>]
-# 	[-rm [-f] [-r|-R] [-skipTrash] [-safely] <src> ...]
-# 	[-rmdir [--ignore-fail-on-non-empty] <dir> ...]
-# 	[-setfacl [-R] [{-b|-k} {-m|-x <acl_spec>} <path>]|[--set <acl_spec> <path>]]
-# 	[-setfattr {-n name [-v value] | -x name} <path>]
-# 	[-setrep [-R] [-w] <rep> <path> ...]
-# 	[-stat [format] <path> ...]
-# 	[-tail [-f] [-s <sleep interval>] <file>]
-# 	[-test -[defsz] <path>]
-# 	[-text [-ignoreCrc] <src> ...]
-# 	[-touch [-a] [-m] [-t TIMESTAMP ] [-c] <path> ...]
-# 	[-touchz <path> ...]
-# 	[-truncate [-w] <length> <path> ...]
-# 	[-usage [cmd ...]]
+# TODO add alias support
+# TODO wildcard support
+# TODO multi version support
+# TODO cron write history cmd file support
+class Watcher:
 
-class PathWacher:
-
-    def pathchange(self, apath):
+    def path_change(self, path):
         pass
 
 
-class PathWacherCompleter(PathWacher):
+class PathWatcher(Watcher):
 
-    def __init__(self):
+    def __init__(self, cmd):
+        self.__cmd = cmd
         readline.parse_and_bind("tab: complete")
-        readline.set_completer(PathWacherCompleter.completer)
+        readline.set_completer(self.completer)
+        readline.set_completer_delims(' /')
+
         self.__histfile = os.path.expandvars('${HOME}/.xhdfs_history')
+
         if os.path.exists(self.__histfile):
             readline.read_history_file(self.__histfile)
-        atexit.register(self.save_histfile)
 
+        atexit.register(self.__save_histfile)
+
+        self.__local_choices = []
         self.__remote_choices = []
-        try:
-            self.__remote_choices = check_output([
-                'hdfs', 'dfs', '-ls', '/']).decode('utf-8').split('\n')[1:-1]
-            self.__remote_choices = [field.split(None)[-1].split('/')[-1] for field in self.__remote_choices]
-            self.__remote_choices = [os.path.basename(d) for d in self.__remote_choices]
-        except Exception as ex:
-            pass
 
-        self.__local_choices = check_output(['ls', os.getcwd()]).decode('utf-8').split('\n')[:-1]
+        self.__mk_remote_choices('/')
+        self.__mk_local_choices(os.getcwd())
 
-    @staticmethod
-    def completer(text, state):
-        try:
-            lchoices = []
-            rchoices = []
-
-            line = readline.get_line_buffer()
-            line = re.split(r'\s+', line)[-1]
-
-            if line.find('/') != -1:
-
-                line = os.path.dirname(line)
-                path = os.path.join(os.getcwd(), line)
-
-                if os.path.exists(path):
-                    lchoices = check_output(['ls', path]).decode('utf-8').split('\n')[:-1]
-                else:
-                    path = os.path.join(app.path().cwd(), line)
-
-                    rchoices = check_output(['hdfs', 'dfs', '-ls', path]).decode('utf-8').split('\n')[1:-1]
-                    rchoices = [rch.split('/')[-1] for rch in rchoices]
-
-            results = [ch for ch in CmdHelper.hdfscmd + lchoices + rchoices
-                       + app.wacher().choices() if ch.startswith(text)]
-            return results[state]
-        except IndexError:
-            return None
-
-    def save_histfile(self):
-        readline.write_history_file(self.__histfile)
-
-    def mk_local_choices(self, apath):
-        self.__local_choices = check_output(['ls', apath]).decode('utf-8').split('\n')[:-1]
-
-    def mk_remote_choices(self, apath):
-        self.__remote_choices = check_output(['hdfs', 'dfs', '-ls', apath]).decode('utf-8').split('\n')[1:-1]
-        self.__remote_choices = [rch.split('/')[-1] for rch in self.__remote_choices]
-
-    def choices(self):
-        return self.__local_choices + self.__remote_choices
-
-    def pathchange(self, apath):
+    def path_change(self, path):
         if app.is_hdfs_mode:
-            self.mk_remote_choices(apath)
+            self.__mk_remote_choices(path)
         else:
-            self.mk_local_choices(apath)
+            self.__mk_local_choices(path)
 
     def choice_layout(self):
-        if app.enable_log:
+        if app.print_autocomp_words:
             if len(self.__local_choices) > 0:
                 print('\n--->local')
+            cnt = 0
             for choice in self.__local_choices:
-                print(choice, end=' ')
+                cnt += 1
+                if cnt % 4 == 0:
+                    print()
+                print(choice.rjust(35), end=' ')
 
             if len(self.__remote_choices) > 0:
                 print('\n\n--->hdfs')
+            cnt = 0
             for choice in self.__remote_choices:
-                print(choice, end=' ')
+                cnt += 1
+                if cnt % 4 == 0:
+                    print()
+                print(choice.rjust(35), end=' ')
 
             if len(self.__local_choices) > 0 or len(self.__remote_choices) > 0:
                 print()
-        # print(readline.get_completer_delims())
+
+    def completer(self, text, state):
+        try:
+            words = []
+
+            line = readline.get_line_buffer()
+            line = [ele for ele in re.split(r'\s+', line) if ele != '']
+
+            if len(line) == 1:
+                words = self.__cmd.hdfscmd()
+            elif len(line) > 1:
+                line = line[-1]
+                if line.find('/') == -1:
+                    words = app.watcher().__choices()
+                else:
+                    if not line[-1].endswith('/'):
+                        line = os.path.dirname(line)
+
+                    local_path = os.path.join(os.getcwd(), line)
+
+                    if os.path.exists(local_path):
+                        lchoices = check_output(['ls', local_path]).decode('utf-8').split('\n')[:-1]
+                        words.extend(lchoices)
+                        # print(f'\n@lchoices: {lchoices}@')
+                    else:
+                        hdfs_path = os.path.join(app.path().cwd(), line)
+
+                        rchoices = check_output(['hdfs', 'dfs', '-ls', hdfs_path]).decode('utf-8').split('\n')[1:-1]
+                        rchoices = [rch.split('/')[-1] for rch in rchoices]
+                        words.extend(rchoices)
+                        # print(f'\n@rchoices: {rchoices}@')
+
+            words = [word for word in words if word.startswith(text)]
+            # print(f'\n@auto complete word: {words[state]}@')
+            return words[state]
+        except IndexError:
+            # print('\n@out of range@')
+            return None
+
+    def __save_histfile(self):
+        readline.write_history_file(self.__histfile)
+
+    def __mk_local_choices(self, path):
+        self.__local_choices = check_output(['ls', path]).decode('utf-8').split('\n')[:-1]
+
+    def __mk_remote_choices(self, path):
+        self.__remote_choices = check_output(['hdfs', 'dfs', '-ls', path]).decode('utf-8').split('\n')[1:-1]
+        self.__remote_choices = [rch.split('/')[-1] for rch in self.__remote_choices]
+
+    def __choices(self):
+        return self.__local_choices + self.__remote_choices
 
 
 class BasePath:
 
-    def __init__(self, cwd, oldpwd):
-        self.__init = True
+    def __init__(self, cwd, oldcwd):
+        self.__cwd = None
+        self.__oldcwd = None
+        self.__watchers = []
         self.cwd = cwd
-        self.oldpwd = oldpwd
-        self.__wachers = []
-        self.__init = False
+        self.oldcwd = oldcwd
 
-    def add_wacher(self, awacher):
-        self.__wachers.append(awacher)
+    def add_watcher(self, watcher):
+        self.__watchers.append(watcher)
 
-    def dscribe(self, apath):
-        for iwacher in self.__wachers:
-            iwacher.pathchange(apath)
+    def dscribe(self, path):
+        [watcher.path_change(path) for watcher in self.__watchers]
 
     @property
     def cwd(self):
@@ -165,101 +141,17 @@ class BasePath:
 
     @cwd.setter
     def cwd(self, val):
-        if not self.__init and self.__cwd != val:
+        if self.__cwd != val:
             self.dscribe(val)
         self.__cwd = val
 
     @property
-    def oldpwd(self):
-        return self.__oldpwd
+    def oldcwd(self):
+        return self.__oldcwd
 
-    @oldpwd.setter
-    def oldpwd(self, val):
-        self.__oldpwd = val
-
-    def cd(self, path):
-        # cd
-        if len(path) == 1:
-            self.oldpwd = self.cwd
-            self.cdhome()
-
-        # cd -
-        elif path[1] == '-':
-            temp = self.oldpwd
-            self.oldpwd = self.cwd
-            self.cwd = temp
-
-            temp = self.oldpwd
-            os.chdir(self.oldpwd)
-            self.oldpwd = os.getcwd()
-            self.cwd = temp
-
-            temp
-
-    def cdpardir(self):
-        pass
-
-    def cdhome(self):
-        pass
-
-    def cdoldpwd(self):
-        pass
-
-    def join(self, apath):
-        return os.path.join(self.cwd, apath)
-
-    def chdir(self, cmd_elem):
-        head, *tail = cmd_elem
-        # .
-        if head == '.':
-            self.oldpwd = self.cwd
-            self.cwd = os.path.dirname(self.cwd)
-
-        # ..
-        elif head == '..':
-            self.oldpwd = self.cwd
-            self.cwd = os.path.dirname(self.cwd)
-            self.cwd = os.path.dirname(self.cwd)
-
-        # cd
-        elif head == 'cd':
-            if len(tail) == 0:
-                self.oldpwd = self.cwd
-                self.cdhome()
-
-            # cd -
-            elif tail[0] == '-':
-                temp = self.oldpwd
-                self.oldpwd = self.cwd
-                self.cwd = temp
-
-            # others
-            else:
-                self.oldpwd = self.cwd
-                self.cwd = self.join(tail[0])
-
-        # unreachable
-        else:
-            CmdHelper.unkown_cmd(cmd_elem)
-
-    def mkdir(self, apath):
-        pass
-
-    def rmdir(self, apath):
-        pass
-
-
-def path_basename(path: str):
-    if len(path) > 0:
-        if path != '/':
-            if path.endswith('/'):
-                path = os.path.basename(os.path.dirname(path))
-            else:
-                path = os.path.basename(path)
-    else:
-        path = '/'
-
-    return path
+    @oldcwd.setter
+    def oldcwd(self, val):
+        self.__oldcwd = val
 
 
 class Path:
@@ -271,113 +163,53 @@ class Path:
 
     class LocalPath(BasePath):
 
-        def __init__(self, cwd, oldpwd):
-            super().__init__(cwd, oldpwd)
+        def __init__(self, cwd, oldcwd):
+            super().__init__(cwd, oldcwd)
 
         def cd(self, path):
-            if path[0] == '.':
-                self.oldpwd = self.cwd
-                os.chdir(os.pardir)
-                self.cwd = os.getcwd()
-            elif path[0] == '..':
-                self.oldpwd = self.cwd
-                os.chdir(os.pardir)
-                os.chdir(os.pardir)
-                self.cwd = os.getcwd()
-            elif len(path) == 1:
-                self.oldpwd = self.cwd
+            if 'cd' == path:
+                self.oldcwd = self.cwd
                 os.chdir(os.path.expandvars('${HOME}'))
                 self.cwd = os.getcwd()
+            elif path == '..':
+                self.oldcwd = self.cwd
+                os.chdir(os.pardir)
+                self.cwd = os.getcwd()
+            elif path == '-':
+                os.chdir(self.oldcwd)
+                self.oldcwd, self.cwd = self.cwd, self.oldcwd
             else:
-                dst = ''
-                if path[1] == '-':
-                    dst = self.oldpwd
-                else:
-                    dst = os.path.join(self.cwd, path[1])
+                dst = Path.normalize(path, self.cwd)
+
                 if os.path.exists(dst):
                     os.chdir(dst)
-                    self.oldpwd = self.cwd
-                    self.cwd = os.getcwd()
+                    self.oldcwd = self.cwd
+                    self.cwd = dst
                 else:
-                    print(f'{dst} not find or is a file')
-
-        def cdpardir(self):
-            os.chdir(os.pardir)
-
-        def cdhome(self):
-            os.chdir(os.path.expandvars('${HOME}'))
-            self.cwd = os.getcwd()
-
-        def cdoldpwd(self):
-            os.chdir(self.oldpwd)
+                    print(f'cd: no such directory: {path}')
 
     class RemotePath(BasePath):
 
-        def __init__(self, cwd, oldpwd):
-            super().__init__(cwd, oldpwd)
+        def __init__(self, cwd, oldcwd):
+            super().__init__(cwd, oldcwd)
 
         def cd(self, path):
-            if path[0] == '.' or len(path) > 1 and path[1] == '.':
-                self.oldpwd = self.cwd
-                self.cwd = os.path.dirname(self.cwd)
-            elif path[0] == '..' or len(path) > 1 and path[1] == '..':
-                self.oldpwd = self.cwd
-                self.cwd = os.path.dirname(self.cwd)
-                self.cwd = os.path.dirname(self.cwd)
-            elif len(path) == 1:
-                self.oldpwd = self.cwd
+            if 'cd' == path:
+                self.oldcwd = self.cwd
                 self.cwd = '/'
+            elif path == '..':
+                self.oldcwd = self.cwd
+                self.cwd = os.path.dirname(self.cwd)
+            elif path == '-':
+                self.oldcwd, self.cwd = self.cwd, self.oldcwd
             else:
-                dst = ''
-                if path[1] == '-':
-                    dst = self.oldpwd
-                else:
-                    dst = os.path.join(self.cwd, path[1])
+                dst = Path.normalize(path, self.cwd)
 
                 if 0 == call(['hadoop', 'fs', '-test', '-d', dst]):
-                    self.oldpwd = self.cwd
+                    self.oldcwd = self.cwd
                     self.cwd = dst
                 else:
-                    print(f'{dst} not find or is a file')
-
-        def cdhome(self):
-            self.cwd = '/'
-
-        def mkdir(self, apath):
-            what = re.fullmatch(r'\s*md\s+'
-                                r'(?P<option>(?:-p\s+)?)'
-                                r'(?P<root>/?)(?P<prefix>\w+)(?P<suffix>(/\w+)*)', apath)
-            if what:
-                option = what.group('option')
-                root = what.group('root')
-                arg = what.group('prefix') + what.group('suffix')
-                if root:
-                    if option:
-                        CmdHelper.logcall(f'mkdir -p {arg}')
-                    else:
-                        CmdHelper.logcall(f'mkdir {arg}')
-                else:
-                    if option:
-                        CmdHelper.logcall(f'mkdir -p {self.join(arg)}')
-                    else:
-                        CmdHelper.logcall(f'mkdir {self.join(arg)}')
-
-        def rmdir(self, apath):
-            what = re.fullmatch(r'^\s*rm\s+'
-                                r'(?P<root>/?)(?P<prefix>\w+)(?P<suffix>(/\w+)*)', apath)
-
-            if what:
-                root = what.group('root')
-                arg = what.group('prefix') + what.group('suffix')
-
-                if root:
-                    CmdHelper.logcall(f'rm -r {arg}')
-                else:
-                    CmdHelper.logcall(f'rm -r {self.join(arg)}')
-
-            # wildcard
-            elif re.fullmatch(r'^\s*rm\s+\*\.\w+', apath):
-                CmdHelper.logcall(apath)
+                    print(f'cd: no such directory: {path}')
 
     def mode(self, mode):
         if mode:
@@ -385,13 +217,13 @@ class Path:
         else:
             self.__path = self.__local_path
 
-    def add_wacher(self, awacher):
-        self.__local_path.add_wacher(awacher)
-        self.__remote_path.add_wacher(awacher)
+    def add_watcher(self, awatcher):
+        self.__local_path.add_watcher(awatcher)
+        self.__remote_path.add_watcher(awatcher)
 
     def prompt(self):
-        local_bname = path_basename(self.__local_path.cwd)
-        remote_bname = path_basename(self.__remote_path.cwd)
+        local_bname = Path.__basename(self.__local_path.cwd)
+        remote_bname = Path.__basename(self.__remote_path.cwd)
 
         prompt = '>'
         cmd_mode_prompt = 'hdfs'
@@ -402,742 +234,376 @@ class Path:
 
         return f'\n[{cmd_mode_prompt}][{local_bname}:{remote_bname}]{prompt} '
 
-    def join(self, apath):
-        return self.__path.join(apath)
-
-    def chdir(self, apath):
-        self.__path.chdir(apath)
-
     def cwd(self):
         return self.__path.cwd
 
     def dcwd(self):
         return self.__local_path.cwd, self.__remote_path.cwd
 
-    def mkdir(self, apath):
-        self.__path.mkdir(apath)
-
-    def rmdir(self, apath):
-        if app.is_hdfs_mode == CmdMode.hdfs:
-            self.__remote_path.rmdir(apath)
-        elif app.is_hdfs_mode == CmdMode.local:
-            pass
-
-    def pwd(self):
-        print(self.cwd())
-
-    def lsdir(self, apath):
-        what = re.split(r'\s+', apath)
-        length = len(what)
-        if length == 1:
-            what.append(self.cwd())
-        else:
-            if what[-1].startswith('-'):
-                what.append(self.cwd())
-            else:
-                what[-1] = self.join(what[-1])
-        CmdHelper.logcall(' '.join(what))
-
     def cd(self, path):
         self.__path.cd(path)
 
-
-class CmdHelper:
-    # support cmds
-    hdfscmd = ['!',
-               'pwd',
-               'exit',
-               'cmd_enable',
-               'log_enable',
-               'appendToFile',
-               'cat',
-               'copyFromLocal',
-               'copyToLocal',
-               'get',
-               'head',
-               'help',
-               'ls',
-               'lsr',
-               'mkdir',
-               'moveFromLocal',
-               'moveToLocal',
-               'mv',
-               'put',
-               'rm',
-               'tail',
-               'touch',
-               'history',
-               'truncate',
-               'cp'
-               ]
-
-    # pattern
-    pat_lsdir = r'\s*ls\s*' \
-                r'(?P<option>(-\w\s+)?)' \
-                r'(?P<root>/?)(?P<arg>(?:\w+)?(?:/\w+)*)/?\s*'
-
-    # pattern
-    pat_chdir = r'\s*cd\s*' \
-                r'(?P<option>(-\w\s+)?)' \
-                r'(?P<root>/?)(?P<arg>(?:\w+)?(?:/\w+)*)/?\s*'
-
-    # pattern
-    pat_mkdir = r'\s*md\s*' \
-                r'(?P<option>(-\w\s+)?)' \
-                r'(?P<root>/?)(?P<arg>(?:\w+)?(?:/\w+)*)/?\s*'
-
-    # pattern
-    pat_rmdir = r'\s*rm\s*' \
-                r'(?P<option>(-\w\s+)?)' \
-                r'(?P<root>/?)(?P<arg>(?:\w+)?(?:/\w+)*)/?\s*'
+    @staticmethod
+    def normalize(path, cwd):
+        if not path.startswith('hdfs://'):
+            path = os.path.join(cwd, path)
+        return path
 
     @staticmethod
-    def unkown_cmd(cmd):
-        print(f'unkown command ---> {cmd}')
-
-    @staticmethod
-    def logcall(cmd):
-        if not app.is_hdfs_mode:
-            if len(cmd) > 0:
-                cmd = ' '.join(cmd)
+    def __basename(path: str):
+        if len(path) > 0:
+            if path != '/':
+                if path.endswith('/'):
+                    path = os.path.basename(os.path.dirname(path))
+                else:
+                    path = os.path.basename(path)
         else:
-            cmd = f'hadoop fs -{cmd[0]} ' + ' '.join(cmd[1:])
+            path = '/'
 
-        if app.enable_cmd:
-            print(cmd)
-        call(cmd, shell=True)
+        return path
 
-    @staticmethod
-    def __ischdircmd(cmd):
-        if re.fullmatch(r'\s*\.\s*', cmd) or \
-                re.fullmatch(r'\s*\.\.\s*', cmd) or \
-                re.fullmatch(r'\s*cd\s*', cmd) or \
-                re.fullmatch(r'\s*cd\s+-\s*', cmd) or \
-                re.fullmatch(r'\s*cd\s*'
-                             r'(?P<root>/?)'
-                             r'(?P<arg>\w+(?:/\w+)*)/?\s*', cmd):
-            return True
-        else:
-            return False
 
-    @staticmethod
-    def __isrmdir(cmd):
-        return re.fullmatch(r'^\s*rm\s+'
-                            r'(?P<root>/?)(?P<prefix>\w+)(?P<suffix>(/\w+)*)', cmd)
+class Command:
 
-    @staticmethod
-    def __ismkdir(cmd):
-        return re.fullmatch(r'\s*md\s+'
-                            r'(?P<option>(?:-p\s+)?)'
-                            r'(?P<root>/?)(?P<prefix>\w+)(?P<suffix>(/\w+)*)', cmd)
+    def __init__(self):
+        self.__CMD_PWD = 'pwd'
+        self.__CMD_EXIT = 'exit'
+        self.__CMD_LOG_PRINT = 'log-print'
+        self.__CMD_PRINT = 'cmd-print'
+        self.__CMD_HISTORY = 'history'
+        self.__CMD_CD = 'cd'
+        self.__CMD_HDFS_ADDR = 'hdfs-addr'
+        self.__CMD_ALIAS = 'alias'
 
-    @staticmethod
-    def __islsdir(cmd):
-        return re.match(r'\s*ls', cmd)
-        # return re.fullmatch(CmdHelper.pat_lsdir, cmd)
+        self.__CMD_CAT = 'cat'
+        self.__CMD_CP = 'cp'
+        self.__CMD_GET = 'get'
+        self.__CMD_LS = 'ls'
+        self.__CMD_LL = 'll'
+        self.__CMD_LSR = 'lsr'
+        self.__CMD_MKDIR = 'mkdir'
+        self.__CMD_MV = 'mv'
+        self.__CMD_PUT = 'put'
+        self.__CMD_RM = 'rm'
+        self.__CMD_RMR = 'rmr'
+        self.__CMD_TAIL = 'tail'
+        self.__CMD_TOUCH = 'touch'
+        self.__CMD_USAGE = 'usage'
 
-    @staticmethod
-    def cmdtype(cmd):
-        what = re.split(r'\s+', cmd)
-        what = [e for e in what if e != '']
-        length = len(what)
-        if length > 0:
-            if what[0] == '.' or what[0] == '..' or what[0] == 'cd':
-                app.path().chdir(what)
-            elif what[0] == 'pwd':
-                print(app.path().cwd())
-            elif what[0] == 'exit':
-                sys.exit()
-            elif what[0] == '!':
-                app.is_hdfs_mode = not app.is_hdfs_mode
-            # if length == 1:
-            #     what.append(app.path().cwd())
-            # else:
-            #     if what[-1].startswith('-'):
-            #         what.append(app.path().cwd())
-            #     else:
-            #         what[-1] = app.path().join(what[-1])
-            # CmdHelper.logcall(' '.join(what))
+        self.__common_alias: dict[str, list[str]] = {
+            self.__CMD_LSR: [self.__CMD_LS, '-R'],
+            self.__CMD_RMR: [self.__CMD_RM, '-R']
+        }
+        self.__hdfs_alias: dict[str, list[str]] = {
+            self.__CMD_LL: [self.__CMD_LS, '']
+        }
+        self.__local_alias: dict[str, list[str]] = {
+            self.__CMD_LL: [self.__CMD_LS, '-l']
+        }
 
-        # if CmdHelper.__ischdircmd(cmd):
-        #     return CmdType.chdir
-        # elif CmdHelper.__ismkdir(cmd):
-        #     return CmdType.mkdir
-        # elif CmdHelper.__isrmdir(cmd):
-        #     return CmdType.rmdir
-        # elif CmdHelper.__islsdir(cmd):
-        #     return CmdType.lsdir
-        # elif re.fullmatch(r'\s*exit\s*', cmd):
-        #     return CmdType.exit
-        # elif re.fullmatch(r'\s*pwd\s*', cmd):
-        #     return CmdType.pwd
-        # elif re.fullmatch(r'\s*!\s*', cmd):
-        #     return CmdType.chmode
-        # elif re.match(r'\s*cat\s+\S', cmd):
-        #     return CmdType.cat
-        # else:
-        return CmdType.other
+        self.__cmd: list[str] = []
+        self.__hdfscmd: list[str] = ['!']
+        for attr in dir(self):
+            if attr.__contains__('__CMD'):
+                self.__hdfscmd.append(self.__getattribute__(attr))
 
-    @staticmethod
-    def chdir(cmd):
-        app.path().chdir(cmd)
+    def hdfscmd(self):
+        return self.__hdfscmd
 
-    @staticmethod
-    def rmdir(cmd):
-        app.path().rmdir(cmd)
+    def parse(self, cmd):
+        self.__cmd = re.split(r'\s+', cmd)
+        self.__cmd = [ele for ele in self.__cmd if ele != '']
 
-    @staticmethod
-    def exit():
-        app.exit()
-
-    @staticmethod
-    def chmode():
-        app.chmode()
-
-    @staticmethod
-    def pwd():
-        app.path().pwd()
-
-    @staticmethod
-    def lsdir(cmd):
-        app.path().lsdir(cmd)
-
-    @staticmethod
-    def parse(cmd):
-        cmd = re.split(r'\s+', cmd)
-        cmd = [ele for ele in cmd if ele != '']
-
-        if not len(cmd):
+        if 0 == len(self.__cmd):
             return
 
-        cname = cmd[0]
+        self.__handle_alias()
 
-        if cname == '!':
-            app.is_hdfs_mode = not app.is_hdfs_mode
-        elif cname == 'pwd':
-            print(app.path().cwd())
-        elif cname == 'exit':
+        cname = self.__cmd[0]
+
+        if cname == self.__CMD_EXIT:
             sys.exit()
-        elif cname == 'log_enable':
-            app.enable_log = not app.enable_log
-        elif cname == 'cmd_enable':
-            app.enable_cmd = not app.enable_cmd
-            [print(c) for c in CmdHelper.hdfscmd]
-
-        # impl separately because there are two file systems (local and hdfs)
-        elif cname == '.' or cname == '..' or cname == 'cd':
-            app.path().cd(cmd)
+        elif cname == '!':
+            app.is_hdfs_mode = not app.is_hdfs_mode
+            return
+        elif cname == self.__CMD_PWD:
+            print(os.path.normpath(app.path().cwd()))
+            return
+        elif cname == self.__CMD_ALIAS:
+            self.__alias()
+            return
+        elif cname == self.__CMD_LOG_PRINT:
+            app.print_autocomp_words = not app.print_autocomp_words
+            return
+        elif cname == self.__CMD_PRINT:
+            app.print_cmd = not app.print_cmd
+            return
+        elif cname == self.__CMD_HISTORY:
+            Command.__history()
+            return
+        elif cname == self.__CMD_CD:
+            app.path().cd(self.__cmd[-1])
+            return
+        elif cname == self.__CMD_HDFS_ADDR:
+            Command.__hdfs_addr()
+            return
 
         # system commands
         elif not app.is_hdfs_mode:
-            return CmdHelper.logcall(cmd)
-
-        elif cname == 'history':
-            CmdHelper.history()
-
-        # hdfs shell commands
-        # hadoop fs -appendToFile <localsrc> ... <dst>
-        elif cname == 'appendToFile':
-            CmdHelper.appendToFile(cmd)
-        # hadoop fs -cat [-ignoreCrc] <src> ...
-        elif cname == 'cat':
-            CmdHelper.cat(cmd)
-        # hadoop fs -copyFromLocal <localsrc> URI
-        elif cname == 'copyFromLocal':
-            CmdHelper.copyFromLocal(cmd)
-        # hadoop fs -copyToLocal [-ignorecrc] [-crc] URI <localdst>
-        elif cname == 'copyToLocal':
-            CmdHelper.copyToLocal(cmd)
-        # hadoop fs -get [-ignorecrc] [-crc] [-p] [-f] <src> <localdst>
-        elif cname == 'get':
-            CmdHelper.get(cmd)
-        # hadoop fs -head URI
-        elif cname == 'head':
-            CmdHelper.head(cmd)
-        # hadoop fs -help
-        elif cname == 'help':
-            CmdHelper.help(cmd)
-        # hadoop fs -ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] <args>
-        elif cname == 'ls' or cname == 'lsr':
-            CmdHelper.ls(cmd)
-        # hadoop fs -mkdir [-p] <paths>
-        elif cname == 'mkdir':
-            CmdHelper.mkdir(cmd)
-        # hadoop fs -moveFromLocal <localsrc> <dst>
-        elif cname == 'moveFromLocal':
-            CmdHelper.moveFromLocal(cmd)
-        # hadoop fs -moveToLocal [-crc] <src> <dst>
-        elif cname == 'moveToLocal':
-            CmdHelper.moveToLocal(cmd)
-        # hadoop fs -mv URI [URI ...] <dest>
-        elif cname == 'mv':
-            CmdHelper.mv(cmd)
-        # hadoop fs -put [-f] [-p] [-l] [-d] <localsrc1> ... <dst>
-        elif cname == 'put':
-            CmdHelper.put(cmd)
-        # hadoop fs -rm [-f] [-r |-R] [-skipTrash] [-safely] URI [URI ...]
-        elif cname == 'rm' or cname == 'rmr':
-            CmdHelper.rm(cmd)
-        # hadoop fs -tail [-f] URI
-        elif cname == 'tail':
-            CmdHelper.tail(cmd)
-        # hadoop fs -touch [-a] [-m] [-t TIMESTAMP] [-c] URI [URI ...]
-        elif cname == 'touch':
-            CmdHelper.touch(cmd)
-        # hadoop fs -truncate [-w] <length> <paths>
-        elif cname == 'truncate':
-            CmdHelper.truncate(cmd)
-        # hadoop fs -cp [-f] [-p | -p[topax]] URI [URI ...] <dest>
-        elif cname == 'cp':
-            CmdHelper.cp(cmd)
-
-            # elif cmd[0] == '!':
-            #     app.mode = not app.mode
-            # elif cmd[0] == 'pwd':
-            #     print(app.path().cwd())
-            # elif cmd[0] == 'exit':
-            #     sys.exit()
-            # elif cmd[0] == 'log_enable':
-            #     app.enable_log = not app.enable_log
-            # elif cmd[0] == 'cmd_enable':
-            #     app.enable_cmd = not app.enable_cmd
-            # elif cmd[0] == 'usage':
-            #     if length > 1 and re.fullmatch(r'\w+', cmd[1]):
-            #         CmdHelper.logcall(f'{cmd[0]} {cmd[1]}')
-            # elif cmd[0] == '.' or cmd[0] == '..' or cmd[0] == 'cd':
-            #     app.path().chdir(cmd)
-            # elif cmd[0] == 'put':
-            #     loc, rem = app.path().dcwd()
-            #     if length > 2:
-            #         CmdHelper.logcall(f'put {os.path.join(loc, cmd[1])} {os.path.join(rem, cmd[2])}')
-            #     elif length > 1:
-            #         CmdHelper.logcall(f'put {os.path.join(loc, cmd[1])} {rem}')
-            # elif cmd[0] == 'get':
-            #     loc, rem = app.path().dcwd()
-            #     if length > 2:
-            #         CmdHelper.logcall(f'get {os.path.join(rem, cmd[1])} {os.path.join(loc, cmd[2])}')
-            #     elif length > 1:
-            #         CmdHelper.logcall(f'get {os.path.join(rem, cmd[1])} {loc}')
-            # else:
-            #     command, *options = cmd
-            #     if re.fullmatch(r'\w+', command):
-            #         for i, e in enumerate(options):
-            #             if not e.startswith('-'):
-            #                 options[i] = app.path().join(e)
-            #         if len(options) == 0 or options[-1].startswith('-'):
-            #             if command != 'rm':
-            #                 options.append(app.path().cwd())
-            #         CmdHelper.logcall(' '.join([command] + options))
-            #         # print(' '.join([command] + options))
-
-    @staticmethod
-    def appendToFile(cmd):
-        # hadoop fs -appendToFile <localsrc> ... <dst>
-        if len(cmd) < 3:
+            self.__exec()
             return
 
-        read_from_stdin = [ele for ele in cmd[1:] if ele == '-']
+        elif cname not in self.hdfscmd():
+            self.__not_find_cmd()
+            return
 
-        uri = r'hdfs://(?:\w+|(?:\d{1,3})(?:(\.\w+){1,3}))(/\w+)+'
+        # hdfs commands
+        elif cname == self.__CMD_CAT:
+            self.__cat()
+        elif cname == self.__CMD_CP:
+            self.__cp()
+        elif cname == self.__CMD_GET:
+            self.__get()
+        elif cname == self.__CMD_LS:
+            self.__ls()
+        elif cname == self.__CMD_MKDIR:
+            self.__mkdir()
+        elif cname == self.__CMD_MV:
+            self.__mv()
+        elif cname == self.__CMD_PUT:
+            self.__put()
+        elif cname == self.__CMD_RM:
+            self.__rm()
+        elif cname == self.__CMD_TAIL:
+            self.__tail()
+        elif cname == self.__CMD_TOUCH:
+            self.__touch()
+        elif cname == self.__CMD_USAGE:
+            self.__usage()
 
-        if read_from_stdin:
-            # hadoop fs -appendToFile - hdfs://[host|ip]/hadoopfile
-            if not cmd[2].startswith('hdfs://'):
-                cmd[2] = app.path().join(cmd[2])
+        self.__exec()
 
-            CmdHelper.logcall(cmd)
-        else:
-            addr = [ele for ele in cmd[1:] if re.fullmatch(uri, ele)]
-            if addr:
-                # hadoop fs -appendToFile localfile ... hdfs://[host|ip]/hadoopfile
-                lcwd, rcwd = app.path().dcwd()
+    # commands implementation
+    def __cat(self):
+        # cat URI
+        if self.__non_options() < 2:
+            return
 
-                for i in range(1, len(cmd) - 1):
-                    cmd[i] = os.path.join(lcwd, cmd[i])
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
 
-                CmdHelper.logcall(cmd)
-            else:
-                # hadoop fs -appendToFile localfile ... /hadoopfile
-                lcwd, rcwd = app.path().dcwd()
-
-                for i in range(1, len(cmd) - 1):
-                    cmd[i] = os.path.join(lcwd, cmd[i])
-
-                cmd[-1] = os.path.join(rcwd, cmd[-1])
-
-                CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def cat(cmd):
-        # hadoop fs -cat [-ignoreCrc] <src> ...
-        if len(cmd) < 2 or cmd[-1].startswith('-'):
+    def __cp(self):
+        # cp [-f] URI <dest>
+        if self.__non_options() < 3:
             return
 
         lcwd, rcwd = app.path().dcwd()
 
-        for i in range(1, len(cmd)):
-            if not cmd[i].startswith('file://') and \
-                    not cmd[i].startswith('hdfs://') and \
-                    not cmd[i].startswith('/') and not cmd[i].startswith('-'):
-                cmd[i] = os.path.join(rcwd, cmd[i])
+        self.__cmd[-2] = Path.normalize(self.__cmd[-2], lcwd)
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], rcwd)
 
-        CmdHelper.logcall(cmd)
+    def __get(self):
+        # get [-f] URI
+        if self.__non_options() < 2:
+            return
 
-    @staticmethod
-    def copyFromLocal(cmd):
-        # hadoop fs -copyFromLocal <localsrc> URI
-        if len(cmd) < 3:
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+
+    def __ls(self):
+        # ls [-d] [-h] [-R] <args>
+        nopt = self.__non_options()
+
+        if 1 == nopt:
+            self.__cmd.append(app.path().dcwd()[1])
+        elif 2 == nopt:
+            self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+
+    def __mkdir(self):
+        # mkdir [-p] <paths>
+        if self.__non_options() < 2:
+            return
+
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+
+        if -1 == ''.join(self.__cmd).find('-p'):
+            self.__cmd.insert(1, '-p')
+
+    def __mv(self):
+        # mv URI <dest>
+        if self.__non_options() < 3:
+            return
+
+        for i in range(1, len(self.__cmd)):
+            self.__cmd[i] = Path.normalize(self.__cmd[i], app.path().cwd())
+
+    def __put(self):
+        # put [-f] [-p] [-l] [-d] <localsrc> <dst>
+        if self.__non_options() < 3:
             return
 
         lcwd, rcwd = app.path().dcwd()
 
-        for i in range(1, len(cmd) - 1):
-            cmd[i] = os.path.join(lcwd, cmd[i])
+        self.__cmd[-2] = Path.normalize(self.__cmd[-2], lcwd)
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], rcwd)
 
-        if not cmd[-1].startswith('hdfs://'):
-            cmd[-1] = os.path.join(rcwd, cmd[-1])
-
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def copyToLocal(cmd):
-        # hadoop fs -copyToLocal [-ignorecrc] [-crc] URI <localdst>
-        if len(cmd) < 3 or cmd[-1].startswith('-'):
+    def __rm(self):
+        # rm [-R] URI
+        if self.__non_options() < 2:
             return
 
-        lcwd, rcwd = app.path().dcwd()
-        for i in range(1, len(cmd) - 1):
-            if not cmd[i].startswith('hdfs://') and not cmd[i].startswith('-'):
-                cmd[i] = os.path.join(rcwd, cmd[i])
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().cwd())
 
-        cmd[-1] = os.path.join(lcwd, cmd[-1])
-
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def get(cmd):
-        # hadoop fs -get [-ignorecrc] [-crc] [-p] [-f] <src> <localdst>
-        if len(cmd) == 1 or cmd[-1].startswith('-'):
+    def __tail(self):
+        # tail [-f] URI
+        if self.__non_options() < 2:
             return
 
-        lcwd, rcwd = app.path().dcwd()
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().cwd())
 
-        if len(cmd) == 2:
-            cmd.append(lcwd)
-
-        for i in range(1, len(cmd) - 1):
-            if not cmd[i].startswith('hdfs://') and not cmd[i].startswith('-'):
-                cmd[i] = os.path.join(rcwd, cmd[i])
-
-        cmd[-1] = os.path.join(lcwd, cmd[-1])
-
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def head(cmd):
-        # hadoop fs -head URI
-        if len(cmd) < 2:
+    def __touch(self):
+        # touchz URI
+        if self.__non_options() < 2:
             return
 
-        for i in range(1, len(cmd)):
-            if not cmd[i].startswith('hdfs://'):
-                cmd[i] = app.path().join(cmd[i])
-
-        CmdHelper.logcall(cmd)
+        self.__cmd[0] += 'z'
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().cwd())
 
     @staticmethod
-    def ls(cmd):
-        # hadoop fs -ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] <args>
-        if cmd[0] == 'lsr':
-            cmd[0] = 'ls'
-            cmd.insert(1, '-R')
-
-        if len(cmd) == 1 or cmd[-1].startswith('-'):
-            cmd.append(app.path().cwd())
-
-            CmdHelper.logcall(cmd)
-        else:
-            for i in range(1, len(cmd)):
-                if not cmd[i].startswith('-'):
-                    cmd[i] = app.path().join(cmd[i])
-
-            CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def mkdir(cmd):
-
-        # hadoop fs -mkdir [-p] <paths>
-        if len(cmd) < 2 or cmd[-1].startswith('-'):
-            return
-
-        for i in range(1, len(cmd)):
-            if not cmd[i].startswith('hdfs://') and not cmd[i].startswith('-'):
-                cmd[i] = app.path().join(cmd[i])
-
-        cmd[0] += ' -p'
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def moveFromLocal(cmd):
-        # hadoop fs -moveFromLocal <localsrc> <dst>
-
-        lcwd, rcwd = app.path().dcwd()
-
-        if len(cmd) == 2:
-            cmd.append(rcwd)
-            cmd[-1] = os.path.join(lcwd, cmd[-1])
-
-            CmdHelper.logcall(cmd)
-        else:
-            for i in range(1, len(cmd) - 1):
-                cmd[i] = os.path.join(lcwd, cmd[i])
-            cmd[-1] = os.path.join(rcwd, cmd[-1])
-
-            CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def moveToLocal(cmd):
-
-        # hadoop fs -moveToLocal [-crc] <src> <dst>
-        if len(cmd) < 3:
-            return
-
-        lcwd, rcwd = app.path().dcwd()
-
-        for i in range(1, len(cmd) - 1):
-            if not cmd[i].startswith('hdfs://') and not cmd[i].startswith('-'):
-                cmd[i] = os.path.join(rcwd, cmd[i])
-
-        cmd[-1] = os.path.join(lcwd, cmd[-1])
-
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def mv(cmd):
-        # hadoop fs -mv URI [URI ...] <dest>
-        if len(cmd) < 3:
-            return
-
-        for i in range(1, len(cmd)):
-            cmd[i] = app.path().join(cmd[i])
-
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def put(cmd):
-        # hadoop fs -put [-f] [-p] [-l] [-d] <localsrc1> ... <dst>
-        what = re.fullmatch(r'put\s+(-f\s+|-p\s+|-l\s+|-d\s+)*(/?.+(/.+)*){1}(\s+/?(.+)?(/.+)*/?)?', ' '.join(cmd))
-        if not what:
-            return
-
-        lcwd, rcwd = app.path().dcwd()
-
-        non_option = 0
-        for item in cmd:
-            if not item.startswith('-'):
-                non_option += 1
-
-        if non_option < 3:
-            cmd.append(rcwd)
-        elif re.fullmatch(r'(.+)(/.+)*/?', cmd[-1]):
-            cmd[-1] = os.path.join(rcwd, cmd[-1])
-
-        CmdHelper.logcall(cmd)
-
-        return
-
-        read_from_stdin = [ele for ele in cmd[1:] if ele == '-']
-
-        uri = r'hdfs://(?:\w+|(?:\d{1,3})(?:(\.\w+){1,3}))(/\w+)+'
-
-        if read_from_stdin:
-            # hadoop fs -put - hdfs://[host|ip]/hadoopfile
-            if not cmd[2].startswith('hdfs://'):
-                app.path().join(cmd[2])
-
-            CmdHelper.logcall(cmd)
-        else:
-            addr = [ele for ele in cmd[1:] if re.fullmatch(uri, ele)]
-            if addr:
-                # hadoop fs -put localfile ... hdfs://[host|ip]/hadoopfile
-                for i in range(1, len(cmd) - 1):
-                    cmd[i] = os.path.join(lcwd, cmd[i])
-
-                CmdHelper.logcall(cmd)
-            else:
-                # hadoop fs -put localfile ... /hadoopfile
-                for i in range(1, len(cmd) - 1):
-                    cmd[i] = os.path.join(lcwd, cmd[i])
-                cmd[-1] = os.path.join(rcwd, cmd[-1])
-
-                CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def rm(cmd):
-        # hadoop fs -rm [-f] [-r |-R] [-skipTrash] [-safely] URI [URI ...]
-        if cmd[0] == 'rmr':
-            cmd[0] = 'rm'
-            cmd.insert(1, '-R')
-
-        if len(cmd) < 2 or cmd[-1].startswith('-'):
-            return
-
-        for i in range(1, len(cmd)):
-            if not cmd[i].startswith('hdfs://') and not cmd[i].startswith('-'):
-                cmd[i] = app.path().join(cmd[i])
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def tail(cmd):
-
-        # hadoop fs -tail [-f] URI
-        if len(cmd) < 2 or cmd[-1].startswith('-'):
-            return
-
-        if not cmd[-1].startswith('hdfs://'):
-            cmd[-1] = app.path().join(cmd[-1])
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def touch(cmd):
-        # hadoop fs -touch [-a] [-m] [-t TIMESTAMP] [-c] URI [URI ...]
-        if len(cmd) < 2 or cmd[-1].startswith('-'):
-            return
-
-        for i in range(1, len(cmd)):
-            if not cmd[i].startswith('hdfs://'):
-                cmd[i] = app.path().join(cmd[i])
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def truncate(cmd):
-        # hadoop fs -truncate [-w] <length> <paths>
-        if len(cmd) < 2 or cmd[-1].startswith('-'):
-            return
-
-        for i in range(1, len(cmd)):
-            if not cmd[i].startswith('hdfs://'):
-                cmd[i] = app.path().join(cmd[i])
-        CmdHelper.logcall(cmd)
-
-    @staticmethod
-    def help(cmd):
-        # hadoop fs -help
-        if len(cmd) == 1:
-            CmdHelper.logcall(cmd)
-        elif cmd[1] == 'appendToFile':
-            print('appendToFile <localsrc> ... <dst>')
-        elif cmd[1] == 'cat':
-            print('cat [-ignoreCrc] <src> ...')
-        elif cmd[1] == 'copyFromLocal':
-            print('copyFromLocal [-f] [-p] [-l] [-d] [-t <thread count>] <localsrc> ... <dst>')
-        elif cmd[1] == 'copyToLocal':
-            print('copyToLocal [-f] [-p] [-ignoreCrc] [-crc] <src> ... <localdst>')
-        elif cmd[1] == 'get':
-            print('get [-f] [-p] [-ignoreCrc] [-crc] <src> ... <localdst>')
-        elif cmd[1] == 'head':
-            print('head <file>')
-        elif cmd[1] == 'ls':
-            print('ls [-C] [-d] [-h] [-q] [-R] [-t] [-S] [-r] [-u] [-e] [<path> ...]')
-        elif cmd[1] == 'mkdir':
-            print('mkdir [-p] <path> ...')
-        elif cmd[1] == 'moveFromLocal':
-            print('moveFromLocal <localsrc> ... <dst>')
-        elif cmd[1] == 'moveToLocal':
-            print('moveToLocal <src> <localdst>')
-        elif cmd[1] == 'mv':
-            print('mv <src> ... <dst>')
-        elif cmd[1] == 'put':
-            print('put [-f] [-p] [-l] [-d] <localsrc> ... <dst>')
-        elif cmd[1] == 'rm':
-            print('rm [-f] [-r|-R] [-skipTrash] [-safely] <src> ...')
-        elif cmd[1] == 'tail':
-            print('tail [-f] [-s <sleep interval>] <file>')
-        elif cmd[1] == 'touch':
-            print('touch [-a] [-m] [-t TIMESTAMP ] [-c] <path> ...')
-        elif cmd[1] == 'truncate':
-            print('truncate [-w] <length> <path> ...')
-
-    @staticmethod
-    def history():
+    def __history():
         hist = os.path.expandvars('${HOME}/.xhdfs_history')
         if os.path.exists(hist):
             with open(hist) as f:
                 for cmd in f.readlines():
                     print(cmd, end='')
 
-    @staticmethod
-    def cp(cmd):
-        # hadoop fs -cp [-f] [-p | -p[topax]] URI [URI ...] <dest>
-        if len(cmd) < 3:
+    def __usage(self):
+        # usage command
+        if self.__non_options() < 2:
             return
 
-        for i in range(1, len(cmd)):
-            cmd[i] = app.path().join(cmd[i])
+    def __exec(self):
+        cmd = ' '.join(self.__cmd)
 
-        CmdHelper.logcall(cmd)
+        if app.is_hdfs_mode:
+            cmd = 'hdfs dfs -' + cmd
 
+        if app.print_cmd:
+            print(cmd)
 
-@unique
-class CmdMode(Enum):
-    hdfs = 1
-    local = 2
+        call(cmd, shell=True)
 
+    def __non_options(self):
+        return len([ele for ele in self.__cmd if not ele.startswith('-')])
 
-@unique
-class CmdType(Enum):
-    chdir = 1
-    mkdir = 2
-    rmdir = 3
-    pwd = 4
-    lsdir = 5
-    cat = 6
-    cp = 7
+    def __not_find_cmd(self):
+        cmd = ''.join(self.__cmd)
+        print(f'command not find: {cmd}')
 
-    chmode = 253
-    exit = 254
-    other = 255
+    def __handle_alias(self):
+        key = self.__cmd[0]
+        if key in self.__common_alias.keys():
+            self.__cmd[0] = self.__common_alias[key][0]
+            options = self.__common_alias[key][1]
+            if len(options) > 0:
+                self.__cmd.insert(1, options)
+            return
+
+        if app.is_hdfs_mode and key in self.__hdfs_alias.keys():
+            self.__cmd[0] = self.__hdfs_alias[key][0]
+            options = self.__hdfs_alias[key][1]
+            if len(options) > 0:
+                self.__cmd.insert(1, options)
+        elif key in self.__local_alias.keys():
+            self.__cmd[0] = self.__local_alias[key][0]
+            options = self.__local_alias[key][1]
+            if len(options) > 0:
+                self.__cmd.insert(1, options)
+
+    @staticmethod
+    def __hdfs_addr():
+        if os.getenv('HADOOP_HOME'):
+            core_site_file = os.path.join(os.environ['HADOOP_HOME'], 'etc/hadoop/core-site.xml')
+            cmd = f'grep -B 2 -A 1 \'hdfs://\' {core_site_file}'
+            if app.print_cmd:
+                print(cmd)
+            call(cmd, shell=True)
+        else:
+            print('HADOOP_HOME environment variable not set!')
+
+    def __alias(self):
+        # alias alia=cmd [-h|-l|-c] [-option1, ...]
+        if len(self.__cmd) == 1:
+            self.__print_alias()
+            return
+
+        what = re.fullmatch(r'(?P<alia>\w+)\s*='
+                            r'\s*(?P<cmd>\w+)(\s+-(?P<mode>[hlc]))?(?P<options>\s+-\w+)*', ' '.join(self.__cmd[1:]))
+        if what:
+            alia = what.group('alia')
+            cmd = what.group('cmd')
+            mode = what.group('mode')
+            options = what.group('options').lstrip(' ')
+            val = [cmd]
+            if options:
+                options = options.split(r'\s+')
+                val += options
+            if not mode or mode == 'h':
+                self.__hdfs_alias[alia] = val
+            elif mode == 'l':
+                self.__local_alias[alia] = val
+            elif mode == 'c':
+                self.__common_alias[alia] = val
+
+    def __print_alias(self):
+        alias = self.__common_alias
+
+        if app.is_hdfs_mode:
+            alias.update(self.__hdfs_alias)
+        else:
+            alias.update(self.__local_alias)
+
+        for k, v in alias.items():
+            v = [i for i in v if len(i) > 0]
+            print(f'alias {k}=' + ' '.join(v))
 
 
 class Main:
 
-    def main(self, args, argv):
-
-        self.init(args, argv)
+    def main(self):
 
         while True:
-            self.wacher().choice_layout()
+            self.watcher().choice_layout()
 
             cmd = input(self.path().prompt())
 
-            CmdHelper.parse(cmd)
+            self.__cmd.parse(cmd)
 
     def __init__(self):
-        self.__enable_log = False
-        self.__enable_cmd = False
         self.__hdfs = True
+        self.print_cmd = args.cmd_print
+        self.print_autocomp_words = args.log_print
 
+        self.__cmd = Command()
         self.__path = Path()
-        self.__wacher = PathWacherCompleter()
-        self.__path.add_wacher(self.__wacher)
+        self.__addr = args.hdfs_address
 
-    def init(self, args, argv):
-        self.__enable_log = args > 1 and argv[1] == '1'
+        self.init()
+        self.__watcher = PathWatcher(self.__cmd)
+        self.__path.add_watcher(self.__watcher)
 
-        # set hdfs cluster address
-        if len(argv) > 1 and argv[1]:
+    def init(self):
+        if self.__addr:
             if os.getenv('HADOOP_HOME'):
                 core_site_file = os.path.join(os.environ['HADOOP_HOME'], 'etc/hadoop/core-site.xml')
                 with open(core_site_file) as f:
                     core_site_conf = f.readlines()
                 for row, line in enumerate(core_site_conf):
                     if line.find('hdfs://') != -1:
-                        core_site_conf[row] = ' '*8 + f'<value>hdfs://{argv[1]}</value>\n'
+                        core_site_conf[row] = ' ' * 8 + f'<value>hdfs://{self.__addr}</value>\n'
                         break
                 with open(core_site_file, 'w') as f:
                     f.writelines(core_site_conf)
             else:
-                print('HADOOP_HOME not find!')
+                print('HADOOP_HOME environment variable not set!')
 
     @property
     def is_hdfs_mode(self):
@@ -1151,36 +617,22 @@ class Main:
     def path(self):
         return self.__path
 
-    def wacher(self):
-        return self.__wacher
+    def watcher(self):
+        return self.__watcher
 
-    @property
-    def enable_log(self):
-        return self.__enable_log
 
-    @enable_log.setter
-    def enable_log(self, val):
-        self.__enable_log = val
-
-    @property
-    def enable_cmd(self):
-        return self.__enable_cmd
-
-    @enable_cmd.setter
-    def enable_cmd(self, val):
-        self.__enable_cmd = val
-
-    def exit(self):
-        if self.is_hdfs_mode == CmdMode.local:
-            self.is_hdfs_mode = CmdMode.hdfs
-        elif self.is_hdfs_mode == CmdMode.hdfs:
-            sys.exit()
+def parse_args():
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-c', '--cmd-print', action='store_true', help='if print hdfs command')
+    parser.add_argument('-l', '--log-print', action='store_true', help='if print auto completion words')
+    parser.add_argument('-s', '--hdfs-address', help='hdfs cluster address')
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
     try:
+        args = parse_args()
         app = Main()
-
-        app.main(len(sys.argv), sys.argv)
-    except (EOFError, KeyboardInterrupt) as e:
-        print(e)
+        app.main()
+    except (EOFError, KeyboardInterrupt):
+        pass
