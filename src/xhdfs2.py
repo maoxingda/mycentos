@@ -22,6 +22,7 @@ class PathWatcher(Watcher):
 
     def __init__(self, cmd):
         self.__cmd = cmd
+        self.__hdfs_choices_cached = {}
         readline.parse_and_bind("tab: complete")
         readline.set_completer(self.completer)
         readline.set_completer_delims(' /')
@@ -94,10 +95,14 @@ class PathWatcher(Watcher):
                     else:
                         hdfs_path = os.path.join(app.path().cwd(), line)
 
-                        rchoices = check_output(['hdfs', 'dfs', '-ls', hdfs_path]).decode('utf-8').split('\n')[1:-1]
-                        rchoices = [rch.split('/')[-1] for rch in rchoices]
-                        words.extend(rchoices)
-                        # print(f'\n@rchoices: {rchoices}@')
+                        if hdfs_path in self.__hdfs_choices_cached.keys():
+                            words.extend(self.__hdfs_choices_cached[hdfs_path])
+                        else:
+                            rchoices = check_output(['hdfs', 'dfs', '-ls', hdfs_path]).decode('utf-8').split('\n')[1:-1]
+                            rchoices = [rch.split('/')[-1] for rch in rchoices]
+                            words.extend(rchoices)
+                            self.__hdfs_choices_cached[hdfs_path] = rchoices
+                        # print(f'\n@rchoices: {words}@')
 
             words = [word for word in words if word.startswith(text)]
             # print(f'\n@auto complete word: {words[state]}@')
@@ -117,6 +122,10 @@ class PathWatcher(Watcher):
         self.__remote_choices = [rch.split('/')[-1] for rch in self.__remote_choices]
 
     def __choices(self):
+        if args.dyn_choices:
+            lcwd, rcwd = app.path().dcwd()
+            self.__mk_local_choices(lcwd)
+            self.__mk_remote_choices(rcwd)
         return self.__local_choices + self.__remote_choices
 
 
@@ -247,6 +256,7 @@ class Path:
     def normalize(path, cwd):
         if not path.startswith('hdfs://'):
             path = os.path.join(cwd, path)
+            path = os.path.normpath(path)
         return path
 
     @staticmethod
@@ -389,24 +399,37 @@ class Command:
         if self.__non_options() < 2:
             return
 
-        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+        lcwd, rcwd = app.path().dcwd()
+
+        for i in range(1, len(self.__cmd)):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
     def __cp(self):
         # cp [-f] URI <dest>
-        if self.__non_options() < 3:
+        non_options = self.__non_options()
+        if non_options < 2:
             return
+        elif non_options == 2:
+            self.__cmd.append(app.path().cwd())
 
         lcwd, rcwd = app.path().dcwd()
 
-        self.__cmd[-2] = Path.normalize(self.__cmd[-2], lcwd)
-        self.__cmd[-1] = Path.normalize(self.__cmd[-1], rcwd)
+        for i in range(1, len(self.__cmd)):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
     def __get(self):
         # get [-f] URI
         if self.__non_options() < 2:
             return
 
-        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+        lcwd, rcwd = app.path().dcwd()
+
+        for i in range(1, len(self.__cmd) - 1):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], lcwd)
 
     def __ls(self):
         # ls [-d] [-h] [-R] <args>
@@ -414,35 +437,52 @@ class Command:
 
         if 1 == nopt:
             self.__cmd.append(app.path().dcwd()[1])
-        elif 2 == nopt:
-            self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+
+        lcwd, rcwd = app.path().dcwd()
+
+        for i in range(1, len(self.__cmd)):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
     def __mkdir(self):
         # mkdir [-p] <paths>
         if self.__non_options() < 2:
             return
 
-        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
-
-        if -1 == ''.join(self.__cmd).find('-p'):
+        if '-p' not in self.__cmd:
             self.__cmd.insert(1, '-p')
-
-    def __mv(self):
-        # mv URI <dest>
-        if self.__non_options() < 3:
-            return
-
-        for i in range(1, len(self.__cmd)):
-            self.__cmd[i] = Path.normalize(self.__cmd[i], app.path().cwd())
-
-    def __put(self):
-        # put [-f] [-p] [-l] [-d] <localsrc> <dst>
-        if self.__non_options() < 3:
-            return
 
         lcwd, rcwd = app.path().dcwd()
 
-        self.__cmd[-2] = Path.normalize(self.__cmd[-2], lcwd)
+        for i in range(1, len(self.__cmd)):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
+
+    def __mv(self):
+        # mv URI <dest>
+        non_options = self.__non_options()
+        if non_options < 2:
+            return
+        elif non_options == 2:
+            self.__cmd.append(app.path().cwd())
+
+        for i in range(1, len(self.__cmd)):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], app.path().cwd())
+
+    def __put(self):
+        # put [-f] [-p] [-l] [-d] <localsrc> <dst>
+        non_options = self.__non_options()
+        if non_options < 2:
+            return
+        elif non_options == 2:
+            self.__cmd.append(app.path().cwd())
+
+        lcwd, rcwd = app.path().dcwd()
+
+        for i in range(1, len(self.__cmd) - 1):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], lcwd)
         self.__cmd[-1] = Path.normalize(self.__cmd[-1], rcwd)
 
     def __rm(self):
@@ -450,7 +490,11 @@ class Command:
         if self.__non_options() < 2:
             return
 
-        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().cwd())
+        lcwd, rcwd = app.path().dcwd()
+
+        for i in range(1, len(self.__cmd)):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
     def __tail(self):
         # tail [-f] URI
@@ -465,7 +509,12 @@ class Command:
             return
 
         self.__cmd[0] += 'z'
-        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().cwd())
+
+        lcwd, rcwd = app.path().dcwd()
+
+        for i in range(1, len(self.__cmd)):
+            if not self.__cmd[i].startswith('-'):
+                self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
     @staticmethod
     def __history():
@@ -496,7 +545,8 @@ class Command:
 
     def __not_find_cmd(self):
         cmd = ''.join(self.__cmd)
-        print(f'command not find: {cmd}')
+        cmd = f'command not find: {cmd}'
+        print(f'\033[1;32;47m{cmd}\033[0m')
 
     def __handle_alias(self):
         key = self.__cmd[0]
@@ -623,9 +673,10 @@ class Main:
 
 def parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-c', '--cmd-print', action='store_true', help='if print hdfs command')
-    parser.add_argument('-l', '--log-print', action='store_true', help='if print auto completion words')
+    parser.add_argument('-c', '--cmd-print', action='store_true', help='if print exec command')
+    parser.add_argument('-l', '--log-print', action='store_true', help='if print auto completion candidate words')
     parser.add_argument('-s', '--hdfs-address', help='hdfs cluster address')
+    parser.add_argument('-d', '--dyn-choices', action='store_true', help='if dynamic make choices')
     return parser.parse_args()
 
 
