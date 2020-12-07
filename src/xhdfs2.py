@@ -335,37 +335,24 @@ class Command:
             sys.exit()
         elif cname == '!':
             app.is_hdfs_mode = not app.is_hdfs_mode
-            return
         elif cname == self.__CMD_PWD:
             print(os.path.normpath(app.path().cwd()))
-            return
         elif cname == self.__CMD_ALIAS:
             self.__alias()
-            return
         elif cname == self.__CMD_LOG_PRINT:
             app.print_autocomp_words = not app.print_autocomp_words
-            return
         elif cname == self.__CMD_PRINT:
             app.print_cmd = not app.print_cmd
-            return
         elif cname == self.__CMD_HISTORY:
             Command.__history()
-            return
         elif cname == self.__CMD_CD:
             app.path().cd(self.__cmd[-1])
-            return
         elif cname == self.__CMD_HDFS_ADDR:
             Command.__hdfs_addr()
-            return
 
         # system commands
         elif not app.is_hdfs_mode:
             self.__exec()
-            return
-
-        elif cname not in self.hdfscmd():
-            self.__not_find_cmd()
-            return
 
         # hdfs commands
         elif cname == self.__CMD_CAT:
@@ -390,8 +377,8 @@ class Command:
             self.__touch()
         elif cname == self.__CMD_USAGE:
             self.__usage()
-
-        self.__exec()
+        else:
+            return self.__not_find_cmd()
 
     # commands implementation
     def __cat(self):
@@ -404,6 +391,8 @@ class Command:
         for i in range(1, len(self.__cmd)):
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
+        
+        self.__exec()
 
     def __cp(self):
         # cp [-f] URI <dest>
@@ -419,6 +408,8 @@ class Command:
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
+        self.__exec()
+
     def __get(self):
         # get [-f] URI
         if self.__non_options() < 2:
@@ -430,6 +421,8 @@ class Command:
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
         self.__cmd[-1] = Path.normalize(self.__cmd[-1], lcwd)
+
+        self.__exec()
 
     def __ls(self):
         # ls [-d] [-h] [-R] <args>
@@ -443,6 +436,8 @@ class Command:
         for i in range(1, len(self.__cmd)):
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
+
+        self.__exec()
 
     def __mkdir(self):
         # mkdir [-p] <paths>
@@ -458,6 +453,8 @@ class Command:
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
+        self.__exec()
+
     def __mv(self):
         # mv URI <dest>
         non_options = self.__non_options()
@@ -469,6 +466,8 @@ class Command:
         for i in range(1, len(self.__cmd)):
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], app.path().cwd())
+
+        self.__exec()
 
     def __put(self):
         # put [-f] [-p] [-l] [-d] <localsrc> <dst>
@@ -485,6 +484,8 @@ class Command:
                 self.__cmd[i] = Path.normalize(self.__cmd[i], lcwd)
         self.__cmd[-1] = Path.normalize(self.__cmd[-1], rcwd)
 
+        self.__exec()
+
     def __rm(self):
         # rm [-R] URI
         if self.__non_options() < 2:
@@ -496,12 +497,16 @@ class Command:
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
+        self.__exec()
+
     def __tail(self):
         # tail [-f] URI
         if self.__non_options() < 2:
             return
 
         self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().cwd())
+
+        self.__exec()
 
     def __touch(self):
         # touchz URI
@@ -516,6 +521,8 @@ class Command:
             if not self.__cmd[i].startswith('-'):
                 self.__cmd[i] = Path.normalize(self.__cmd[i], rcwd)
 
+        self.__exec()
+
     @staticmethod
     def __history():
         hist = os.path.expandvars('${HOME}/.xhdfs_history')
@@ -528,6 +535,8 @@ class Command:
         # usage command
         if self.__non_options() < 2:
             return
+
+        self.__exec()
 
     def __exec(self):
         cmd = ' '.join(self.__cmd)
