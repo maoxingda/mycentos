@@ -287,6 +287,8 @@ class Command:
 
         self.__CMD_CAT = 'cat'
         self.__CMD_CP = 'cp'
+        self.__CMD_CHMOD = 'chmod'
+        self.__CMD_CHOWN = 'chown'
         self.__CMD_GET = 'get'
         self.__CMD_LS = 'ls'
         self.__CMD_LL = 'll'
@@ -359,6 +361,10 @@ class Command:
             self.__cat()
         elif cname == self.__CMD_CP:
             self.__cp()
+        elif cname == self.__CMD_CHMOD:
+            self.__chmod()
+        elif cname == self.__CMD_CHOWN:
+            self.__chown()
         elif cname == self.__CMD_GET:
             self.__get()
         elif cname == self.__CMD_LS:
@@ -410,6 +416,20 @@ class Command:
 
         self.__exec()
 
+    def __chmod(self):
+        # chmod [-R] <MODE[,MODE]... | OCTALMODE> PATH...
+        if self.__non_options() < 3:
+            return
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+        self.__exec()
+
+    def __chown(self):
+        # chown [-R] [OWNER][:[GROUP]] PATH...
+        if self.__non_options() < 3:
+            return
+        self.__cmd[-1] = Path.normalize(self.__cmd[-1], app.path().dcwd()[1])
+        self.__exec()
+
     def __get(self):
         # get [-f] URI
         if self.__non_options() < 2:
@@ -425,7 +445,7 @@ class Command:
         self.__exec()
 
     def __ls(self):
-        # ls [-d] [-h] [-R] <args>
+        # ls [-d] [-h] [-R] [<path> ...]
         nopt = self.__non_options()
 
         if 1 == nopt:
@@ -545,7 +565,7 @@ class Command:
             cmd = 'hdfs dfs -' + cmd
 
         if app.print_cmd:
-            print(cmd)
+            print(f'\033[1;32;47m{cmd}\033[0m')
 
         call(cmd, shell=True)
 
@@ -632,9 +652,11 @@ class Main:
         while True:
             self.watcher().choice_layout()
 
-            cmd = input(self.path().prompt())
+            # cmd = input(self.path().prompt())
 
-            self.__cmd.parse(cmd)
+            print(f'\033[1;32;47m{self.path().prompt()}\033[0m', end='')
+
+            self.__cmd.parse(input())
 
     def __init__(self):
         self.__hdfs = True
@@ -692,6 +714,7 @@ def parse_args():
 if __name__ == '__main__':
     try:
         args = parse_args()
+        # print(args)
         app = Main()
         app.main()
     except (EOFError, KeyboardInterrupt):
